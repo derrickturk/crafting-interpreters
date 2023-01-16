@@ -7,9 +7,17 @@ use std::{
     process,
 };
 
+use loxide::{
+    lex::Lexer,
+};
+
 fn run(source: String) -> Result<(), Box<dyn Error>> {
-    println!("this is where we'd run: {}", source);
-    todo!("write the interpreter")
+    let lexer = Lexer::new(source);
+    let toks = lexer.scan_tokens();
+    for t in toks {
+        println!("token: {:?}", t);
+    }
+    Ok(())
 }
 
 fn run_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
