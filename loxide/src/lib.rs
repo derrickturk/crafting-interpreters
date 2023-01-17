@@ -1,4 +1,7 @@
 pub mod lex;
+pub mod error;
+
+pub use error::{Error, ErrorDetails, Result};
 
 #[cfg(test)]
 mod tests {
