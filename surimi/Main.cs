@@ -31,7 +31,8 @@ static class App {
         }
 
         interp.run(src);
-        return 0;
+
+        return interp.HadError ? 1 : 0;
     }
 
     public static int RunInteractive()
