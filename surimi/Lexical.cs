@@ -16,10 +16,89 @@ public enum TokenType {
 public readonly record struct Token(
   TokenType Type, string? Lexeme, object? Literal, int Line);
 
-public static class Lexer {
+public class Lexer {
+    public Lexer(string input)
+    {
+        _line = 1;
+        _remaining = input.AsMemory();
+    }
+
+    public Token Next()
+    {
+        if (AtEnd)
+            return HereToken(TokenType.Eof);
+
+        char c = Consume();
+        switch (c) {
+            case '(':
+                return HereToken(TokenType.LParen);
+            case ')':
+                return HereToken(TokenType.RParen);
+            case '{':
+                return HereToken(TokenType.LBrace);
+            case '}':
+                return HereToken(TokenType.RBrace);
+            case ',':
+                return HereToken(TokenType.Comma);
+            case '.':
+                return HereToken(TokenType.Dot);
+            case '-':
+                return HereToken(TokenType.Minus);
+            case '+':
+                return HereToken(TokenType.Plus);
+            case ';':
+                return HereToken(TokenType.Semicolon);
+            case '*':
+                return HereToken(TokenType.Star);
+            default:
+                // TODO: LexError or some such class
+                throw new InvalidOperationException(
+                  $"unexpected character: {c}");
+        }
+    }
+
     public static IEnumerable<Token> Lex(string input)
     {
-        int line = 1;
-        yield return new Token(TokenType.Eof, null, null, line);
+        var l = new Lexer(input);
+        while (true) {
+            Token next = l.Next();
+            yield return next;
+            if (next.Type == TokenType.Eof)
+                break;
+        }
     }
+
+    protected char Consume()
+    {
+        char ret = Peek;
+        Advance();
+        return ret;
+    }
+
+    protected bool Match(char what)
+    {
+        if (!AtEnd && Peek == what) {
+            Advance();
+            return true;
+        }
+        return false;
+    }
+
+    private bool AtEnd => _remaining.IsEmpty;
+
+    private char Peek => _remaining.Span[0];
+
+    private void Advance()
+    {
+        _remaining = _remaining.Slice(1);
+    }
+
+    protected Token HereToken(TokenType type,
+      string? lexeme = null, object? literal = null)
+    {
+        return new Token(type, lexeme, literal, _line);
+    }
+
+    private int _line;
+    private ReadOnlyMemory<char> _remaining;
 }
