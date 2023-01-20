@@ -1,11 +1,14 @@
 namespace Surimi;
 
 using System;
+using System.Linq;
 
 public class Interpreter {
     public void run(string code)
     {
-        Console.WriteLine($"beep boop: {code}");
+        var toks = Lexer.Lex(code).ToList();
+        foreach (var t in toks)
+            Console.WriteLine($"beep boop: {t}");
     }
 
     public bool HadError { get; protected set; }
