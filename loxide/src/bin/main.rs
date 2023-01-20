@@ -29,6 +29,7 @@ fn run_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
 fn run_prompt() -> Result<(), Box<dyn Error>> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
+    // TODO: swallow errors, but remember if any happened (for exit status)
     loop {
         write!(&mut stdout, "> ")?;
         stdout.flush()?;
