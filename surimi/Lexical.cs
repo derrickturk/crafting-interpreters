@@ -105,21 +105,28 @@ public class Lexer {
                     _onError.Error(_line, "unterminated string literal");
                     break;
 
-                case >= '0' and <= '9':
-                    while (!AtEnd && Peek >= '0' && Peek <= '9')
-                        Consume();
-                    if (!AtEnd && Peek == '.') {
-                        Consume();
-                        if (AtEnd || Peek < '0' || Peek > '9')
-                            Retreat();
-                        else
-                            while (!AtEnd && Peek >= '0' && Peek <= '9')
-                                Consume();
-                    }
-                    return HereToken(TokenType.NumLit,
-                      Double.Parse(CurrentLexeme));
-
                 default:
+                    if (IsAsciiDigit(c)) {
+                        while (!AtEnd && IsAsciiDigit(Peek))
+                            Consume();
+                        if (!AtEnd && Peek == '.') {
+                            Consume();
+                            if (AtEnd || !IsAsciiDigit(Peek))
+                                Retreat();
+                            else
+                                while (!AtEnd && IsAsciiDigit(Peek))
+                                    Consume();
+                        }
+                        return HereToken(TokenType.NumLit,
+                          Double.Parse(CurrentLexeme));
+                    }
+
+                    if (IsAlphaish(c)) {
+                        while (!AtEnd && IsAlphaNumericish(Peek))
+                            Consume();
+                        return HereToken(MaybeIdentTokenType(CurrentLexeme));
+                    }
+
                     _onError.Error(_line, $"unexpected character '{c}'");
                     break;
             }
@@ -174,6 +181,35 @@ public class Lexer {
     protected void Retreat()
     {
         --_nextptr;
+    }
+
+    private static bool IsAsciiDigit(char c) => c >= '0' && c <= '9';
+    private static bool IsAlphaish(char c) =>
+        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    private static bool IsAlphaNumericish(char c) =>
+        IsAlphaish(c) || IsAsciiDigit(c);
+
+    private static TokenType MaybeIdentTokenType(string lexeme)
+    {
+        switch (lexeme) {
+            case "and": return TokenType.And;
+            case "class": return TokenType.Class;
+            case "else": return TokenType.Else;
+            case "false": return TokenType.False;
+            case "for": return TokenType.For;
+            case "fun": return TokenType.Fun;
+            case "if": return TokenType.If;
+            case "nil": return TokenType.Nil;
+            case "or": return TokenType.Or;
+            case "print": return TokenType.Print;
+            case "return": return TokenType.Return;
+            case "super": return TokenType.Super;
+            case "this": return TokenType.This;
+            case "true": return TokenType.True;
+            case "var": return TokenType.Var;
+            case "while": return TokenType.While;
+            default: return TokenType.Ident;
+        }
     }
 
     private int _line;
