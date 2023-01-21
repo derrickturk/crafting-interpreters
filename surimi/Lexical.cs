@@ -5,7 +5,7 @@ using System.Linq;
 public enum TokenType {
     LParen, RParen, LBrace, RBrace,
     Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
-    Excl, ExclEqual, Eq, EqEq, Gt, GtEq, Lt, LtEq,
+    Not, NotEq, Eq, EqEq, Gt, GtEq, Lt, LtEq,
     Ident, StrLit, NumLit,
     And, Class, Else, False, Fun, For, If, Nil, Or, Print, Return, Super, This,
     True, Var, While,
@@ -27,40 +27,58 @@ public class Lexer {
 
     public Token Next()
     {
-RESTART: /* look, we only loop in the case of a bad token
-            so I'm not indenting a whole damn while loop, it'd be confusing
-            the right answer is a tail call to Next() in the default: case,
-            but CLR doesn't guarantee that won't grow the stack
-          */
-        if (AtEnd)
-            return HereToken(TokenType.Eof);
+        while (true) {
+            if (AtEnd)
+                return HereToken(TokenType.Eof);
 
-        char c = Consume();
-        switch (c) {
-            case '(':
-                return HereToken(TokenType.LParen);
-            case ')':
-                return HereToken(TokenType.RParen);
-            case '{':
-                return HereToken(TokenType.LBrace);
-            case '}':
-                return HereToken(TokenType.RBrace);
-            case ',':
-                return HereToken(TokenType.Comma);
-            case '.':
-                return HereToken(TokenType.Dot);
-            case '-':
-                return HereToken(TokenType.Minus);
-            case '+':
-                return HereToken(TokenType.Plus);
-            case ';':
-                return HereToken(TokenType.Semicolon);
-            case '*':
-                return HereToken(TokenType.Star);
-            default:
-                _onError.Error(_line, $"unexpected character '{c}'");
-                CommitLexeme();
-                goto RESTART;
+            char c = Consume();
+            switch (c) {
+                case '(':
+                    return HereToken(TokenType.LParen);
+                case ')':
+                    return HereToken(TokenType.RParen);
+                case '{':
+                    return HereToken(TokenType.LBrace);
+                case '}':
+                    return HereToken(TokenType.RBrace);
+                case ',':
+                    return HereToken(TokenType.Comma);
+                case '.':
+                    return HereToken(TokenType.Dot);
+                case '-':
+                    return HereToken(TokenType.Minus);
+                case '+':
+                    return HereToken(TokenType.Plus);
+                case ';':
+                    return HereToken(TokenType.Semicolon);
+                case '*':
+                    return HereToken(TokenType.Star);
+                case '!':
+                    return HereToken(Match('=')
+                      ? TokenType.NotEq : TokenType.Not);
+                case '=':
+                    return HereToken(Match('=')
+                      ? TokenType.EqEq : TokenType.Eq);
+                case '<':
+                    return HereToken(Match('=')
+                      ? TokenType.LtEq : TokenType.Lt);
+                case '>':
+                    return HereToken(Match('=')
+                      ? TokenType.GtEq : TokenType.Gt);
+                case '/':
+                    if (Match('/')) {
+                        while (!AtEnd && Peek != '\n')
+                            Advance();
+                        CommitLexeme();
+                    } else {
+                        return HereToken(TokenType.Slash);
+                    }
+                    break;
+                default:
+                    _onError.Error(_line, $"unexpected character '{c}'");
+                    CommitLexeme();
+                    break;
+            }
         }
     }
 

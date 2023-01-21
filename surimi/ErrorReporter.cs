@@ -1,5 +1,5 @@
 public class ErrorReporter {
-    public bool HadError { get; protected set; }
+    public bool HadError { get; set; }
 
     public void Error(int line, string msg)
     {

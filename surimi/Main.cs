@@ -38,7 +38,8 @@ static class App {
 
     public static int RunInteractive()
     {
-        var interp = new Interpreter(new ErrorReporter());
+        var onError = new ErrorReporter();
+        var interp = new Interpreter(onError);
 
         while (true) {
             Console.Write("> ");
@@ -47,6 +48,8 @@ static class App {
             if (line == null)
                 break;
             interp.run(line);
+            // I really hate this error handling scheme
+            onError.HadError = false;
         }
 
         return 0;
