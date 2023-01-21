@@ -14,12 +14,13 @@ public enum TokenType {
 
 // I don't like this representation for tokens
 public readonly record struct Token(
-  TokenType Type, string? Lexeme, object? Literal, int Line);
+  TokenType Type, string Lexeme, object? Literal, int Line);
 
 public class Lexer {
     public Lexer(string input)
     {
         _line = 1;
+        _nextptr = 0;
         _remaining = input.AsMemory();
     }
 
@@ -84,21 +85,24 @@ public class Lexer {
         return false;
     }
 
-    private bool AtEnd => _remaining.IsEmpty;
-
-    private char Peek => _remaining.Span[0];
-
-    private void Advance()
+    protected Token HereToken(TokenType type, object? literal = null)
     {
-        _remaining = _remaining.Slice(1);
-    }
-
-    protected Token HereToken(TokenType type,
-      string? lexeme = null, object? literal = null)
-    {
+        var lexeme = _remaining.Slice(0, _nextptr).ToString();
+        _remaining = _remaining.Slice(_nextptr);
+        _nextptr = 0;
         return new Token(type, lexeme, literal, _line);
     }
 
+    private bool AtEnd => _nextptr >= _remaining.Length;
+
+    private char Peek => _remaining.Span[_nextptr];
+
+    private void Advance()
+    {
+        ++_nextptr;
+    }
+
     private int _line;
+    private int _nextptr;
     private ReadOnlyMemory<char> _remaining;
 }
