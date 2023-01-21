@@ -20,14 +20,17 @@ public class Lexer {
     public Lexer(string input, ErrorReporter onError)
     {
         _line = 1;
+        _startptr = 0;
         _nextptr = 0;
-        _remaining = input.AsMemory();
+        _input = input.AsMemory();
         _onError = onError;
     }
 
     public Token Next()
     {
         while (true) {
+            _startptr = _nextptr;
+
             if (AtEnd)
                 return HereToken(TokenType.Eof);
 
@@ -69,7 +72,6 @@ public class Lexer {
                     if (Match('/')) {
                         while (!AtEnd && Peek != '\n')
                             Advance();
-                        CommitLexeme();
                     } else {
                         return HereToken(TokenType.Slash);
                     }
@@ -77,15 +79,12 @@ public class Lexer {
                 case ' ':
                 case '\r':
                 case '\t':
-                    CommitLexeme();
                     break;
                 case '\n':
                     ++_line;
-                    CommitLexeme();
                     break;
                 default:
                     _onError.Error(_line, $"unexpected character '{c}'");
-                    CommitLexeme();
                     break;
             }
         }
@@ -120,28 +119,24 @@ public class Lexer {
 
     protected Token HereToken(TokenType type, object? literal = null)
     {
-        return new Token(type, CommitLexeme(), literal, _line);
+        return new Token(type, CurrentLexeme, literal, _line);
     }
 
-    protected bool AtEnd => _nextptr >= _remaining.Length;
+    protected bool AtEnd => _nextptr >= _input.Length;
 
-    protected char Peek => _remaining.Span[_nextptr];
+    protected char Peek => _input.Span[_nextptr];
+
+    protected string CurrentLexeme =>
+      _input.Slice(_startptr, _nextptr - _startptr).ToString();
 
     protected void Advance()
     {
         ++_nextptr;
     }
 
-    protected string CommitLexeme()
-    {
-        var lexeme = _remaining.Slice(0, _nextptr).ToString();
-        _remaining = _remaining.Slice(_nextptr);
-        _nextptr = 0;
-        return lexeme;
-    }
-
     private int _line;
+    private int _startptr;
     private int _nextptr;
-    private ReadOnlyMemory<char> _remaining;
+    private ReadOnlyMemory<char> _input;
     private ErrorReporter _onError;
 }
