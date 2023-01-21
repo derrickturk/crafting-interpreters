@@ -74,6 +74,15 @@ public class Lexer {
                         return HereToken(TokenType.Slash);
                     }
                     break;
+                case ' ':
+                case '\r':
+                case '\t':
+                    CommitLexeme();
+                    break;
+                case '\n':
+                    ++_line;
+                    CommitLexeme();
+                    break;
                 default:
                     _onError.Error(_line, $"unexpected character '{c}'");
                     CommitLexeme();
