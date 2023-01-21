@@ -20,7 +20,8 @@ static class App {
 
     public static int RunFile(string path)
     {
-        var interp = new Interpreter();
+        var onError = new ErrorReporter();
+        var interp = new Interpreter(onError);
 
         string src;
         try {
@@ -32,12 +33,12 @@ static class App {
 
         interp.run(src);
 
-        return interp.HadError ? 1 : 0;
+        return onError.HadError ? 1 : 0;
     }
 
     public static int RunInteractive()
     {
-        var interp = new Interpreter();
+        var interp = new Interpreter(new ErrorReporter());
 
         while (true) {
             Console.Write("> ");

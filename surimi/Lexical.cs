@@ -17,15 +17,21 @@ public readonly record struct Token(
   TokenType Type, string Lexeme, object? Literal, int Line);
 
 public class Lexer {
-    public Lexer(string input)
+    public Lexer(string input, ErrorReporter onError)
     {
         _line = 1;
         _nextptr = 0;
         _remaining = input.AsMemory();
+        _onError = onError;
     }
 
     public Token Next()
     {
+RESTART: /* look, we only loop in the case of a bad token
+            so I'm not indenting a whole damn while loop, it'd be confusing
+            the right answer is a tail call to Next() in the default: case,
+            but CLR doesn't guarantee that won't grow the stack
+          */
         if (AtEnd)
             return HereToken(TokenType.Eof);
 
@@ -52,15 +58,15 @@ public class Lexer {
             case '*':
                 return HereToken(TokenType.Star);
             default:
-                // TODO: LexError or some such class
-                throw new InvalidOperationException(
-                  $"unexpected character: {c}");
+                _onError.Error(_line, $"unexpected character '{c}'");
+                CommitLexeme();
+                goto RESTART;
         }
     }
 
-    public static IEnumerable<Token> Lex(string input)
+    public static IEnumerable<Token> Lex(string input, ErrorReporter onError)
     {
-        var l = new Lexer(input);
+        var l = new Lexer(input, onError);
         while (true) {
             Token next = l.Next();
             yield return next;
@@ -87,22 +93,28 @@ public class Lexer {
 
     protected Token HereToken(TokenType type, object? literal = null)
     {
+        return new Token(type, CommitLexeme(), literal, _line);
+    }
+
+    protected bool AtEnd => _nextptr >= _remaining.Length;
+
+    protected char Peek => _remaining.Span[_nextptr];
+
+    protected void Advance()
+    {
+        ++_nextptr;
+    }
+
+    protected string CommitLexeme()
+    {
         var lexeme = _remaining.Slice(0, _nextptr).ToString();
         _remaining = _remaining.Slice(_nextptr);
         _nextptr = 0;
-        return new Token(type, lexeme, literal, _line);
-    }
-
-    private bool AtEnd => _nextptr >= _remaining.Length;
-
-    private char Peek => _remaining.Span[_nextptr];
-
-    private void Advance()
-    {
-        ++_nextptr;
+        return lexeme;
     }
 
     private int _line;
     private int _nextptr;
     private ReadOnlyMemory<char> _remaining;
+    private ErrorReporter _onError;
 }
