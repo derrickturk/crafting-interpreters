@@ -56,6 +56,7 @@ public class Lexer {
                     return HereToken(TokenType.Semicolon);
                 case '*':
                     return HereToken(TokenType.Star);
+
                 case '!':
                     return HereToken(Match('=')
                       ? TokenType.NotEq : TokenType.Not);
@@ -68,6 +69,7 @@ public class Lexer {
                 case '>':
                     return HereToken(Match('=')
                       ? TokenType.GtEq : TokenType.Gt);
+
                 case '/':
                     if (Match('/')) {
                         while (!AtEnd && Peek != '\n')
@@ -76,6 +78,7 @@ public class Lexer {
                         return HereToken(TokenType.Slash);
                     }
                     break;
+
                 case ' ':
                 case '\r':
                 case '\t':
@@ -83,6 +86,7 @@ public class Lexer {
                 case '\n':
                     ++_line;
                     break;
+
                 case '"':
                     while (!AtEnd) {
                         char next = Consume();
@@ -100,6 +104,21 @@ public class Lexer {
                     }
                     _onError.Error(_line, "unterminated string literal");
                     break;
+
+                case >= '0' and <= '9':
+                    while (!AtEnd && Peek >= '0' && Peek <= '9')
+                        Consume();
+                    if (!AtEnd && Peek == '.') {
+                        Consume();
+                        if (AtEnd || Peek < '0' || Peek > '9')
+                            Retreat();
+                        else
+                            while (!AtEnd && Peek >= '0' && Peek <= '9')
+                                Consume();
+                    }
+                    return HereToken(TokenType.NumLit,
+                      Double.Parse(CurrentLexeme));
+
                 default:
                     _onError.Error(_line, $"unexpected character '{c}'");
                     break;
@@ -149,6 +168,12 @@ public class Lexer {
     protected void Advance()
     {
         ++_nextptr;
+    }
+
+    // use with caution - just for 2-char lookahead on numbers at the moment
+    protected void Retreat()
+    {
+        --_nextptr;
     }
 
     private int _line;
