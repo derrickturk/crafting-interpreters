@@ -83,6 +83,23 @@ public class Lexer {
                 case '\n':
                     ++_line;
                     break;
+                case '"':
+                    while (!AtEnd) {
+                        char next = Consume();
+                        switch (next) {
+                            case '"':
+                                string token = CurrentLexeme;
+                                return HereToken(TokenType.StrLit,
+                                  token.Substring(1, token.Length - 2));
+                            case '\n':
+                                ++_line;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    _onError.Error(_line, "unterminated string literal");
+                    break;
                 default:
                     _onError.Error(_line, $"unexpected character '{c}'");
                     break;
