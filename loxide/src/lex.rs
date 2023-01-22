@@ -183,9 +183,24 @@ impl<'a> Iterator for Lexer<'a> {
                     } else {
                         return Some(Ok(self.token_here(TokenKind::Slash)));
                     }
-                }
+                },
 
-                _ => todo!("the rest of the owl"),
+                '"' => {
+                    while let Some(next) = self.consume() {
+                        match next {
+                            '"' => {
+                                let (this, _) = self.split_here();
+                                let this = &this[1..this.len() - 1];
+                                return Some(Ok(
+                                  self.token_here(TokenKind::StrLit(this))));
+                            },
+                            '\n' => { self.line += 1; },
+                            _ => { },
+                        }
+                    }
+                },
+
+                _ => todo!("rest of the owl"),
             };
         }
     }
