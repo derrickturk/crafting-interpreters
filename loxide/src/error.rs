@@ -27,7 +27,7 @@ pub enum ErrorDetails {
 }
 
 impl Display for ErrorDetails {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut Formatter) -> fmt::Result {
         match *self {
         }
     }

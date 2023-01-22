@@ -11,11 +11,10 @@ use loxide::{
     lex::Lexer,
 };
 
-fn run(source: String) -> Result<(), Box<dyn Error>> {
+fn run(source: &str) -> Result<(), Box<dyn Error>> {
     let lexer = Lexer::new(source);
-    let toks = lexer.scan_tokens();
-    for t in toks {
-        println!("token: {:?}", t);
+    for tok in lexer {
+        println!("token: {:?}", tok);
     }
     Ok(())
 }
@@ -23,7 +22,7 @@ fn run(source: String) -> Result<(), Box<dyn Error>> {
 fn run_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
     let mut source = String::new();
     File::open(path)?.read_to_string(&mut source)?;
-    run(source)
+    run(&source)
 }
 
 fn run_prompt() -> Result<(), Box<dyn Error>> {
@@ -36,7 +35,7 @@ fn run_prompt() -> Result<(), Box<dyn Error>> {
         let mut line = String::new();
         match stdin.read_line(&mut line)? {
             0 => break,
-            _ => run(line)?,
+            _ => run(&line)?,
         };
     }
     Ok(())
