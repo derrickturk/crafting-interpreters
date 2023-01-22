@@ -57,13 +57,23 @@ pub struct Token<'a> {
 /// A Lox lexer, holding the remaining source code
 #[derive(Debug)]
 pub struct Lexer<'a> {
-    source: &'a str
+    source: &'a str,
+    line: usize,
+    pos: usize,
 }
 
 impl<'a> Lexer<'a> {
     #[inline]
     pub fn new(source: &'a str) -> Self {
-        Self { source }
+        Self { source, line: 0, pos: 0 }
+    }
+
+    fn token_here(&mut self, kind: TokenKind<'a>, offset: usize, cur: char
+      ) -> Token<'a> {
+        let pos = offset + cur.len_utf8();
+        let (lexeme, rest) = self.source.split_at(pos);
+        self.source = rest;
+        Token { kind, lexeme, line: self.line }
     }
 }
 
@@ -71,6 +81,11 @@ impl<'a> Iterator for Lexer<'a> {
     type Item = error::Result<Token<'a>>;
 
     fn next(&mut self) -> Option<error::Result<Token<'a>>> {
-        None
+        let mut chars = self.source.char_indices();
+        match chars.next()? {
+            (off, '(') =>
+              Some(Ok(self.token_here(TokenKind::LParen, off, '('))),
+            _ => todo!("the rest of the owl"),
+        }
     }
 }
