@@ -75,7 +75,8 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     fn peek(&self) -> Option<char> {
-        self.source.chars().next()
+        let (_, rest) = self.split_here();
+        rest.chars().next()
     }
 
     #[inline]
@@ -89,10 +90,14 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline]
-    fn advance(&mut self) {
+    fn match_char<P: Fn(char) -> bool>(&mut self, pred: P) -> bool {
         if let Some(c) = self.peek() {
-            self.next_offset += c.len_utf8();
+            if pred(c) {
+                self.next_offset += c.len_utf8();
+                return true;
+            }
         }
+        false
     }
 
     #[inline]
@@ -134,12 +139,38 @@ impl<'a> Iterator for Lexer<'a> {
                 ';' => return Some(Ok(self.token_here(TokenKind::Semicolon))),
                 '*' => return Some(Ok(self.token_here(TokenKind::Star))),
 
-                /*
-                '!' => token_here!(TokenKind::Not),
-                '=' => token_here!(TokenKind::Eq),
-                '<' => token_here!(TokenKind::Lt),
-                '>' => token_here!(TokenKind::Gt),
-                */
+                '!' => {
+                    let kind = if self.match_char(|c| c == '=') {
+                        TokenKind::NotEq
+                    } else {
+                        TokenKind::Not
+                    };
+                    return Some(Ok(self.token_here(kind)));
+                },
+                '=' => {
+                    let kind = if self.match_char(|c| c == '=') {
+                        TokenKind::EqEq
+                    } else {
+                        TokenKind::Eq
+                    };
+                    return Some(Ok(self.token_here(kind)));
+                },
+                '<' => {
+                    let kind = if self.match_char(|c| c == '=') {
+                        TokenKind::LtEq
+                    } else {
+                        TokenKind::Lt
+                    };
+                    return Some(Ok(self.token_here(kind)));
+                },
+                '>' => {
+                    let kind = if self.match_char(|c| c == '=') {
+                        TokenKind::GtEq
+                    } else {
+                        TokenKind::Gt
+                    };
+                    return Some(Ok(self.token_here(kind)));
+                },
 
                 _ => todo!("the rest of the owl"),
             };
