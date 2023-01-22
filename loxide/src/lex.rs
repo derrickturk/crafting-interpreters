@@ -43,7 +43,6 @@ pub enum TokenKind<'a> {
     True,
     Var,
     While,
-    Eof, // I don't trust this guy one bit
 }
 
 /// A Lox token, along with the correponding lexeme text, and the line number
