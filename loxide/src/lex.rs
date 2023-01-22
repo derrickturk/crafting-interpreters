@@ -90,7 +90,12 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline]
-    fn match_char<P: Fn(char) -> bool>(&mut self, pred: P) -> bool {
+    fn match_char(&mut self, what: char) -> bool {
+        self.match_where(|c| c == what)
+    }
+
+    #[inline]
+    fn match_where<P: Fn(char) -> bool>(&mut self, pred: P) -> bool {
         if let Some(c) = self.peek() {
             if pred(c) {
                 self.next_offset += c.len_utf8();
@@ -125,8 +130,8 @@ impl<'a> Iterator for Lexer<'a> {
     fn next(&mut self) -> Option<error::Result<Token<'a>>> {
         loop {
             match self.consume()? {
-                ' ' | '\r' | '\t' =>  { self.commit_here() },
-                '\n' => { self.line += 1; self.commit_here() },
+                ' ' | '\r' | '\t' =>  { self.commit_here(); },
+                '\n' => { self.line += 1; self.commit_here(); },
 
                 '(' => return Some(Ok(self.token_here(TokenKind::LParen))),
                 ')' => return Some(Ok(self.token_here(TokenKind::RParen))),
@@ -140,7 +145,7 @@ impl<'a> Iterator for Lexer<'a> {
                 '*' => return Some(Ok(self.token_here(TokenKind::Star))),
 
                 '!' => {
-                    let kind = if self.match_char(|c| c == '=') {
+                    let kind = if self.match_char('=') {
                         TokenKind::NotEq
                     } else {
                         TokenKind::Not
@@ -148,7 +153,7 @@ impl<'a> Iterator for Lexer<'a> {
                     return Some(Ok(self.token_here(kind)));
                 },
                 '=' => {
-                    let kind = if self.match_char(|c| c == '=') {
+                    let kind = if self.match_char('=') {
                         TokenKind::EqEq
                     } else {
                         TokenKind::Eq
@@ -156,7 +161,7 @@ impl<'a> Iterator for Lexer<'a> {
                     return Some(Ok(self.token_here(kind)));
                 },
                 '<' => {
-                    let kind = if self.match_char(|c| c == '=') {
+                    let kind = if self.match_char('=') {
                         TokenKind::LtEq
                     } else {
                         TokenKind::Lt
@@ -164,13 +169,22 @@ impl<'a> Iterator for Lexer<'a> {
                     return Some(Ok(self.token_here(kind)));
                 },
                 '>' => {
-                    let kind = if self.match_char(|c| c == '=') {
+                    let kind = if self.match_char('=') {
                         TokenKind::GtEq
                     } else {
                         TokenKind::Gt
                     };
                     return Some(Ok(self.token_here(kind)));
                 },
+
+                '/' => {
+                    if self.match_char('/') {
+                        while self.match_where(|c| c != '\n') { }
+                        self.commit_here();
+                    } else {
+                        return Some(Ok(self.token_here(TokenKind::Slash)));
+                    }
+                }
 
                 _ => todo!("the rest of the owl"),
             };
