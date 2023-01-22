@@ -59,70 +59,80 @@ pub struct Token<'a> {
 pub struct Lexer<'a> {
     source: &'a str,
     line: usize,
+    next_offset: usize,
 }
 
 impl<'a> Lexer<'a> {
     #[inline]
     pub fn new(source: &'a str) -> Self {
-        Self { source, line: 0 }
+        Self { source, line: 0, next_offset: 0 }
     }
 
-    fn token_here(&mut self, kind: TokenKind<'a>, offset: usize, cur: char
-      ) -> Token<'a> {
-        let lexeme = self.advance_here(offset, cur);
-        Token { kind, lexeme, line: self.line }
+    /* this is extra horrible because we have to also attach the
+     *   slice corresponding to the token's lexeme.
+     * if we end up not using this, I will be Very Annoyed.
+     */
+
+    #[inline]
+    fn peek(&self) -> Option<char> {
+        self.source.chars().next()
     }
 
-    fn advance_here(&mut self, offset: usize, cur: char) -> &'a str {
-        let pos = offset + cur.len_utf8();
-        let (lexeme, rest) = self.source.split_at(pos);
+    #[inline]
+    fn consume(&mut self) -> Option<char> {
+        if let Some(c) = self.peek() {
+            self.next_offset += c.len_utf8();
+            Some(c)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn advance(&mut self) {
+        if let Some(c) = self.peek() {
+            self.next_offset += c.len_utf8();
+        }
+    }
+
+    #[inline]
+    fn split_here(&self) -> (&'a str, &'a str) {
+        self.source.split_at(self.next_offset)
+    }
+
+    fn commit_here(&mut self) -> &'a str {
+        let (lexeme, rest) = self.split_here();
         self.source = rest;
+        self.next_offset = 0;
         lexeme
+    }
+
+    #[inline]
+    fn token_here(&mut self, kind: TokenKind<'a>) -> Token<'a> {
+        let lexeme = self.commit_here();
+        Token { kind, lexeme, line: self.line }
     }
 }
 
 impl<'a> Iterator for Lexer<'a> {
     type Item = error::Result<Token<'a>>;
 
-    /* this is extra horrible because we have to also attach the
-     *   slice corresponding to the token's lexeme.
-     * if we end up not using this, I will be Very Annoyed.
-     */
     fn next(&mut self) -> Option<error::Result<Token<'a>>> {
         loop {
-            let mut chars = self.source.char_indices();
-            let (off, c) = chars.next()?;
+            match self.consume()? {
+                ' ' | '\r' | '\t' =>  { self.commit_here() },
+                '\n' => { self.line += 1; self.commit_here() },
 
-            /* we're going to use the `token_here` helper function plus
-             *   a simple macro to de-duplicate this a bit.
-             */
-            macro_rules! token_here {
-                ($what:expr) => {
-                    return Some(Ok(self.token_here($what, off, c)))
-                }
-            }
-
-            // same for "skips"
-            macro_rules! skip_here {
-                () => {
-                    self.advance_here(off, c)
-                }
-            }
-
-            match c {
-                ' ' | '\r' | '\t' =>  { skip_here!() },
-                '\n' => { self.line += 1; skip_here!() },
-
-                '(' => token_here!(TokenKind::LParen),
-                ')' => token_here!(TokenKind::RParen),
-                '{' => token_here!(TokenKind::LBrace),
-                '}' => token_here!(TokenKind::RBrace),
-                ',' => token_here!(TokenKind::Comma),
-                '.' => token_here!(TokenKind::Dot),
-                '-' => token_here!(TokenKind::Minus),
-                '+' => token_here!(TokenKind::Plus),
-                ';' => token_here!(TokenKind::Semicolon),
-                '*' => token_here!(TokenKind::Star),
+                '(' => return Some(Ok(self.token_here(TokenKind::LParen))),
+                ')' => return Some(Ok(self.token_here(TokenKind::RParen))),
+                '{' => return Some(Ok(self.token_here(TokenKind::LBrace))),
+                '}' => return Some(Ok(self.token_here(TokenKind::RBrace))),
+                ',' => return Some(Ok(self.token_here(TokenKind::Comma))),
+                '.' => return Some(Ok(self.token_here(TokenKind::Dot))),
+                '-' => return Some(Ok(self.token_here(TokenKind::Minus))),
+                '+' => return Some(Ok(self.token_here(TokenKind::Plus))),
+                ';' => return Some(Ok(self.token_here(TokenKind::Semicolon))),
+                '*' => return Some(Ok(self.token_here(TokenKind::Star))),
 
                 /*
                 '!' => token_here!(TokenKind::Not),
