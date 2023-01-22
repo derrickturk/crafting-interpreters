@@ -59,33 +59,80 @@ pub struct Token<'a> {
 pub struct Lexer<'a> {
     source: &'a str,
     line: usize,
-    pos: usize,
 }
 
 impl<'a> Lexer<'a> {
     #[inline]
     pub fn new(source: &'a str) -> Self {
-        Self { source, line: 0, pos: 0 }
+        Self { source, line: 0 }
     }
 
     fn token_here(&mut self, kind: TokenKind<'a>, offset: usize, cur: char
       ) -> Token<'a> {
+        let lexeme = self.advance_here(offset, cur);
+        Token { kind, lexeme, line: self.line }
+    }
+
+    fn advance_here(&mut self, offset: usize, cur: char) -> &'a str {
         let pos = offset + cur.len_utf8();
         let (lexeme, rest) = self.source.split_at(pos);
         self.source = rest;
-        Token { kind, lexeme, line: self.line }
+        lexeme
     }
 }
 
 impl<'a> Iterator for Lexer<'a> {
     type Item = error::Result<Token<'a>>;
 
+    /* this is extra horrible because we have to also attach the
+     *   slice corresponding to the token's lexeme.
+     * if we end up not using this, I will be Very Annoyed.
+     */
     fn next(&mut self) -> Option<error::Result<Token<'a>>> {
-        let mut chars = self.source.char_indices();
-        match chars.next()? {
-            (off, '(') =>
-              Some(Ok(self.token_here(TokenKind::LParen, off, '('))),
-            _ => todo!("the rest of the owl"),
+        loop {
+            let mut chars = self.source.char_indices();
+            let (off, c) = chars.next()?;
+
+            /* we're going to use the `token_here` helper function plus
+             *   a simple macro to de-duplicate this a bit.
+             */
+            macro_rules! token_here {
+                ($what:expr) => {
+                    return Some(Ok(self.token_here($what, off, c)))
+                }
+            }
+
+            // same for "skips"
+            macro_rules! skip_here {
+                () => {
+                    self.advance_here(off, c)
+                }
+            }
+
+            match c {
+                ' ' | '\r' | '\t' =>  { skip_here!() },
+                '\n' => { self.line += 1; skip_here!() },
+
+                '(' => token_here!(TokenKind::LParen),
+                ')' => token_here!(TokenKind::RParen),
+                '{' => token_here!(TokenKind::LBrace),
+                '}' => token_here!(TokenKind::RBrace),
+                ',' => token_here!(TokenKind::Comma),
+                '.' => token_here!(TokenKind::Dot),
+                '-' => token_here!(TokenKind::Minus),
+                '+' => token_here!(TokenKind::Plus),
+                ';' => token_here!(TokenKind::Semicolon),
+                '*' => token_here!(TokenKind::Star),
+
+                /*
+                '!' => token_here!(TokenKind::Not),
+                '=' => token_here!(TokenKind::Eq),
+                '<' => token_here!(TokenKind::Lt),
+                '>' => token_here!(TokenKind::Gt),
+                */
+
+                _ => todo!("the rest of the owl"),
+            };
         }
     }
 }
