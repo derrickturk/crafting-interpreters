@@ -24,11 +24,17 @@ impl error::Error for Error { }
 /// The details of what went wrong
 #[derive(Copy, Clone, Debug)]
 pub enum ErrorDetails {
+    UnexpectedCharacter(char),
+    UnterminatedStrLit,
 }
 
 impl Display for ErrorDetails {
-    fn fmt(&self, _f: &mut Formatter) -> fmt::Result {
-        match *self {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match self {
+            ErrorDetails::UnexpectedCharacter(c) =>
+                write!(f, "unexpected character {}", c),
+            ErrorDetails::UnterminatedStrLit =>
+                write!(f, "unterminated string literal"),
         }
     }
 }

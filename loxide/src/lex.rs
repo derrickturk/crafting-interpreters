@@ -1,6 +1,6 @@
 //! Tokens and the Loxide lexer/scanner
 
-use crate::error;
+use crate::error::{self, Error, ErrorDetails};
 
 /// The type and payload (if any) of a Lox token
 #[derive(Copy, Clone, Debug)]
@@ -43,6 +43,30 @@ pub enum TokenKind<'a> {
     True,
     Var,
     While,
+}
+
+impl<'a> TokenKind<'a> {
+    pub fn keyword_or_ident(lexeme: &'a str) -> Self {
+        match lexeme {
+            "and" => TokenKind::And,
+            "class" => TokenKind::Class,
+            "else" => TokenKind::Else,
+            "false" => TokenKind::False,
+            "for" => TokenKind::For,
+            "fun" => TokenKind::Fun,
+            "if" => TokenKind::If,
+            "nil" => TokenKind::Nil,
+            "or" => TokenKind::Or,
+            "print" => TokenKind::Print,
+            "return" => TokenKind::Return,
+            "super" => TokenKind::Super,
+            "this" => TokenKind::This,
+            "true" => TokenKind::True,
+            "var" => TokenKind::Var,
+            "while" => TokenKind::While,
+            _ => TokenKind::Ident(lexeme),
+        }
+    }
 }
 
 /// A Lox token, along with the correponding lexeme text, and the line number
@@ -100,23 +124,18 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     fn match_where<P: Fn(char) -> bool>(&mut self, pred: P) -> bool {
-        if let Some(c) = self.peek() {
-            if pred(c) {
+        match self.peek() {
+            Some(c) if pred(c) => {
                 self.next_offset += c.len_utf8();
-                return true;
-            }
+                true
+            },
+            _ => false,
         }
-        false
     }
 
     #[inline]
     fn match_while<P: Fn(char) -> bool>(&mut self, pred: P) {
-        loop {
-            match self.peek() {
-                Some(c) if pred(c) => { self.next_offset += c.len_utf8(); },
-                _ => break,
-            }
-        }
+        while self.match_where(&pred) { }
     }
 
     #[inline]
@@ -213,6 +232,11 @@ impl<'a> Iterator for Lexer<'a> {
                             _ => { },
                         }
                     }
+                    return Some(Err(Error{
+                        line: self.line,
+                        wurr: String::new(),
+                        details: ErrorDetails::UnterminatedStrLit,
+                    }));
                 },
 
                 d if d.is_ascii_digit() => {
@@ -232,7 +256,20 @@ impl<'a> Iterator for Lexer<'a> {
                         this.parse::<f64>().unwrap()))));
                 },
 
-                _ => todo!("rest of the owl"),
+                i if i.is_alphabetic() || i == '_' => {
+                    self.match_while(|i| i.is_alphanumeric() || i == '_');
+                    let (this, _) = self.split_here();
+                    return Some(Ok(
+                      self.token_here(TokenKind::keyword_or_ident(this))));
+                },
+
+                c => {
+                    return Some(Err(Error {
+                        line: self.line,
+                        wurr: String::new(), // IDK what the author intends here
+                        details: ErrorDetails::UnexpectedCharacter(c),
+                    }))
+                },
             };
         }
     }
