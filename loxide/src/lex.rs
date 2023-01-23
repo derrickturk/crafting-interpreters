@@ -74,8 +74,13 @@ impl<'a> Lexer<'a> {
 
     #[inline]
     fn peek(&self) -> Option<char> {
+        self.peek_nth(0)
+    }
+
+    #[inline]
+    fn peek_nth(&self, n: usize) -> Option<char> {
         let (_, rest) = self.split_here();
-        rest.chars().next()
+        rest.chars().nth(n)
     }
 
     #[inline]
@@ -102,6 +107,16 @@ impl<'a> Lexer<'a> {
             }
         }
         false
+    }
+
+    #[inline]
+    fn match_while<P: Fn(char) -> bool>(&mut self, pred: P) {
+        loop {
+            match self.peek() {
+                Some(c) if pred(c) => { self.next_offset += c.len_utf8(); },
+                _ => break,
+            }
+        }
     }
 
     #[inline]
@@ -178,7 +193,7 @@ impl<'a> Iterator for Lexer<'a> {
 
                 '/' => {
                     if self.match_char('/') {
-                        while self.match_where(|c| c != '\n') { }
+                        self.match_while(|c| c != '\n');
                         self.commit_here();
                     } else {
                         return Some(Ok(self.token_here(TokenKind::Slash)));
@@ -198,6 +213,23 @@ impl<'a> Iterator for Lexer<'a> {
                             _ => { },
                         }
                     }
+                },
+
+                d if d.is_ascii_digit() => {
+                    self.match_while(|c| c.is_ascii_digit());
+                    if let Some('.') = self.peek() {
+                        match self.peek_nth(1) {
+                            Some(d) if d.is_ascii_digit() => {
+                                self.consume(); // the dot
+                                self.match_while(|c| c.is_ascii_digit());
+                            },
+                            _ => { },
+                        }
+                    }
+                    let (this, _) = self.split_here();
+                    return Some(Ok(
+                      self.token_here(TokenKind::NumLit(
+                        this.parse::<f64>().unwrap()))));
                 },
 
                 _ => todo!("rest of the owl"),
