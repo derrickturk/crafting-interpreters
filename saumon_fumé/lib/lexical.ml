@@ -68,14 +68,34 @@ module Lexer = struct
 
   let token_here l f =
     let lm = lexeme l in
-    (step l, { kind = f lm; lexeme = lm; line = l.line })
+    (step l, Ok({ kind = f lm; lexeme = lm; line = l.line }))
+
+  let error_here l details =
+    (step l, Error({ Error.line = l.line; where = ""; details }))
 
   let rec next l = match consume l with
     | None -> None
+
+    | Some((l', ('\r' | '\t' | ' '))) -> next (step l')
+    | Some((l', '\n')) -> next { (step l') with line = l'.line + 1 }
+
     | Some((l', '(')) -> Some(token_here l' (fun _ -> LParen))
     | Some((l', ')')) -> Some(token_here l' (fun _ -> RParen))
-    | Some((l', ('\r' | '\t' | ' '))) -> next (step l')
-    | _ -> failwith "potato"
+    | Some((l', '{')) -> Some(token_here l' (fun _ -> LBrace))
+    | Some((l', '}')) -> Some(token_here l' (fun _ -> RBrace))
+    | Some((l', ',')) -> Some(token_here l' (fun _ -> Comma))
+    | Some((l', '.')) -> Some(token_here l' (fun _ -> Dot))
+    | Some((l', '-')) -> Some(token_here l' (fun _ -> Minus))
+    | Some((l', '+')) -> Some(token_here l' (fun _ -> Plus))
+    | Some((l', ';')) -> Some(token_here l' (fun _ -> Semicolon))
+    | Some((l', '*')) -> Some(token_here l' (fun _ -> Star))
+
+    | Some((l', '!')) -> begin match match_char l' '=' with
+        | Some((l'', _)) -> Some(token_here l'' (fun _ -> NotEq))
+        | _ -> Some(token_here l' (fun _ -> Not))
+      end
+
+    | Some((l', c)) -> Some(error_here l' (UnexpectedCharacter c))
 end
 
 let lex source () =

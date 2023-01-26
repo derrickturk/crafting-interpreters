@@ -52,8 +52,9 @@ module Lexer: sig
   val match_char: t -> char -> (t * char) option
   val lexeme: t -> string
   val step: t -> t
-  val token_here: t -> (string -> token_kind) -> t * token
-  val next: t -> (t * token) option
+  val token_here: t -> (string -> token_kind) -> t * (token, Error.t) result
+  val error_here: t -> Error.details -> t * (token, Error.t) result
+  val next: t -> (t * (token, Error.t) result) option
 end
 
-val lex: string -> token Seq.t
+val lex: string -> (token, Error.t) result Seq.t
