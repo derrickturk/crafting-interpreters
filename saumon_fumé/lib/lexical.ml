@@ -51,6 +51,10 @@ module Lexer = struct
 
   let peek { input; next_pos; _ } = try Some(input.[next_pos]) with _ -> None
 
+  let peek_n { input; next_pos; _ } n = try
+    Some(input.[next_pos + n])
+  with _ -> None
+
   let consume l = try
     Some(({ l with next_pos = l.next_pos + 1 }, l.input.[l.next_pos]))
   with _ -> None
@@ -73,6 +77,11 @@ module Lexer = struct
   let error_here l details =
     (step l, Error({ Error.line = l.line; where = ""; details }))
 
+  let rec strip_comment l = match consume l with
+    | Some((_, '\n')) -> l
+    | Some((l', _)) -> strip_comment l'
+    | _ -> l
+
   let rec next l = match consume l with
     | None -> None
 
@@ -94,6 +103,25 @@ module Lexer = struct
         | Some((l'', _)) -> Some(token_here l'' (fun _ -> NotEq))
         | _ -> Some(token_here l' (fun _ -> Not))
       end
+    | Some((l', '=')) -> begin match match_char l' '=' with
+        | Some((l'', _)) -> Some(token_here l'' (fun _ -> EqEq))
+        | _ -> Some(token_here l' (fun _ -> Eq))
+      end
+    | Some((l', '<')) -> begin match match_char l' '=' with
+        | Some((l'', _)) -> Some(token_here l'' (fun _ -> LtEq))
+        | _ -> Some(token_here l' (fun _ -> Lt))
+      end
+    | Some((l', '>')) -> begin match match_char l' '=' with
+        | Some((l'', _)) -> Some(token_here l'' (fun _ -> GtEq))
+        | _ -> Some(token_here l' (fun _ -> Gt))
+      end
+
+    | Some((l', '/')) -> begin match match_char l' '/' with
+        | Some((l'', _)) -> next (strip_comment l'')
+        | _ -> Some(token_here l' (fun _ -> Slash))
+      end
+
+    (* TODO: string and numeric literals *)
 
     | Some((l', c)) -> Some(error_here l' (UnexpectedCharacter c))
 end

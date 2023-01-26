@@ -47,6 +47,7 @@ module Lexer: sig
   val init: string -> t
   val eof: t -> bool
   val peek: t -> char option
+  val peek_n: t -> int -> char option
   val consume: t -> (t * char) option
   val match_where: t -> (char -> bool) -> (t * char) option
   val match_char: t -> char -> (t * char) option
