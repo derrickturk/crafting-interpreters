@@ -1,0 +1,4 @@
+(executable
+ (public_name saumon_fume)
+ (name main)
+ (libraries saumon_fume))

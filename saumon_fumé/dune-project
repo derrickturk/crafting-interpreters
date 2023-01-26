@@ -1,0 +1,20 @@
+(lang dune 3.3)
+
+(name saumon_fume)
+
+(generate_opam_files true)
+
+(source
+ (github derrickturk/crafting-interpreters))
+
+(authors "Derrick W. Turk")
+
+(maintainers "Derrick W. Turk")
+
+(package
+ (name saumon_fume)
+ (synopsis "An OCaml implementation of Lox")
+ (description "An OCaml implementation of an interactive interpreter for the Lox programming language, from Bob Nystrom's 'Crafting Interpreters'.")
+ (depends ocaml dune))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

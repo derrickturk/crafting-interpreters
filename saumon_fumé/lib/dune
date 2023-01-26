@@ -1,0 +1,3 @@
+(library
+ (name saumon_fume)
+ (preprocess (pps ppx_deriving.show)))
