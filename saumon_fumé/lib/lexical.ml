@@ -97,13 +97,11 @@ module Lexer = struct
     | '0'..'9' -> true
     | _ -> false
 
-  (*
   let is_ident_begin = function
     | 'A'..'Z' | 'a'..'z' | '_' -> true
     | _ -> false
 
   let is_ident c = is_ident_begin c || is_ascii_digit c
-  *)
 
   let num_literal l =
     let l' = match_while l is_ascii_digit in
@@ -112,6 +110,28 @@ module Lexer = struct
           token_here (match_while l'' is_ascii_digit)
             (fun lexeme -> NumLit (float_of_string lexeme))
       | _ -> token_here l' (fun lexeme -> NumLit (float_of_string lexeme))
+
+  let ident_or_keyword l =
+    let l' = match_while l is_ident in
+    let kind = function
+      | "and" -> And
+      | "class" -> Class
+      | "else" -> Else
+      | "false" -> False
+      | "for" -> For
+      | "fun" -> Fun
+      | "if" -> If
+      | "nil" -> Nil
+      | "or" -> Or
+      | "print" -> Print
+      | "return" -> Return
+      | "super" -> Super
+      | "this" -> This
+      | "true" -> True
+      | "var" -> Var
+      | "while" -> While
+      | l -> Ident(l)
+    in token_here l' kind
 
   let rec next l = match consume l with
     | None -> None
@@ -155,6 +175,8 @@ module Lexer = struct
     | Some((l', '"')) -> Some(string_literal l')
 
     | Some((l', c)) when is_ascii_digit c -> Some(num_literal l')
+
+    | Some((l', c)) when is_ident_begin c -> Some(ident_or_keyword l')
 
     | Some((l', c)) -> Some(error_here l' (UnexpectedCharacter c))
 end
