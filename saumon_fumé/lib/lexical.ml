@@ -65,6 +65,10 @@ module Lexer = struct
 
   let match_char l c = match_where l (fun c' -> c = c')
 
+  let rec match_while l p = match match_where l p with
+    | Some((l', _)) -> match_while l' p
+    | None -> l
+
   let lexeme { input; start_pos; next_pos; _ } =
     let len = next_pos - start_pos in String.sub input start_pos len
 
@@ -81,6 +85,33 @@ module Lexer = struct
     | Some((_, '\n')) -> l
     | Some((l', _)) -> strip_comment l'
     | _ -> l
+
+  let string_literal l =
+    let l' = match_while l (fun c -> c != '"') in
+    match consume l' with
+    | Some((l'', '"')) -> token_here l''
+        (fun lexeme -> StrLit (String.sub lexeme 1 (String.length lexeme - 2)))
+    | _ -> error_here l UnterminatedStrLit
+
+  let is_ascii_digit = function
+    | '0'..'9' -> true
+    | _ -> false
+
+  (*
+  let is_ident_begin = function
+    | 'A'..'Z' | 'a'..'z' | '_' -> true
+    | _ -> false
+
+  let is_ident c = is_ident_begin c || is_ascii_digit c
+  *)
+
+  let num_literal l =
+    let l' = match_while l is_ascii_digit in
+    match consume l', peek_n l' 1 with
+      | Some (l'', '.'), Some(d) when is_ascii_digit d ->
+          token_here (match_while l'' is_ascii_digit)
+            (fun lexeme -> NumLit (float_of_string lexeme))
+      | _ -> token_here l' (fun lexeme -> NumLit (float_of_string lexeme))
 
   let rec next l = match consume l with
     | None -> None
@@ -121,7 +152,9 @@ module Lexer = struct
         | _ -> Some(token_here l' (fun _ -> Slash))
       end
 
-    (* TODO: string and numeric literals *)
+    | Some((l', '"')) -> Some(string_literal l')
+
+    | Some((l', c)) when is_ascii_digit c -> Some(num_literal l')
 
     | Some((l', c)) -> Some(error_here l' (UnexpectedCharacter c))
 end
