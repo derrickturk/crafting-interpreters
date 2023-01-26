@@ -42,20 +42,4 @@ type token_kind =
 type token = { kind: token_kind; lexeme: string; line: int }
   [@@deriving show]
 
-module Lexer: sig
-  type t
-  val init: string -> t
-  val eof: t -> bool
-  val peek: t -> char option
-  val peek_n: t -> int -> char option
-  val consume: t -> (t * char) option
-  val match_where: t -> (char -> bool) -> (t * char) option
-  val match_char: t -> char -> (t * char) option
-  val lexeme: t -> string
-  val step: t -> t
-  val token_here: t -> (string -> token_kind) -> t * (token, Error.t) result
-  val error_here: t -> Error.details -> t * (token, Error.t) result
-  val next: t -> (t * (token, Error.t) result) option
-end
-
 val lex: string -> (token, Error.t) result Seq.t

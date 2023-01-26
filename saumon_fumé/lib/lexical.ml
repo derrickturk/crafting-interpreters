@@ -47,10 +47,6 @@ module Lexer = struct
 
   let init source = { input = source; start_pos = 0; next_pos = 0; line = 1 }
 
-  let eof { input; next_pos; _ } = next_pos >= String.length input
-
-  let peek { input; next_pos; _ } = try Some(input.[next_pos]) with _ -> None
-
   let peek_n { input; next_pos; _ } n = try
     Some(input.[next_pos + n])
   with _ -> None
