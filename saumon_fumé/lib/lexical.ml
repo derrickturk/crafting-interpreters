@@ -78,7 +78,7 @@ module Lexer = struct
     (step l, Error({ Error.line = l.line; where = ""; details }))
 
   let rec strip_comment l = match consume l with
-    | Some((_, '\n')) -> l
+    | Some((_, '\n')) -> { l with line = l.line + 1 }
     | Some((l', _)) -> strip_comment l'
     | _ -> l
 
