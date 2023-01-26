@@ -73,9 +73,13 @@ module Lexer = struct
   let rec next l = match consume l with
     | None -> None
     | Some((l', '(')) -> Some(token_here l' (fun _ -> LParen))
+    | Some((l', ')')) -> Some(token_here l' (fun _ -> RParen))
+    | Some((l', ('\r' | '\t' | ' '))) -> next (step l')
+    | _ -> failwith "potato"
 end
 
 let lex source () =
+  let open Lexer in
   let rec lex' l = match next l with
     | None -> Seq.Nil
     | Some ((l', tok)) -> Seq.Cons((tok, fun () -> lex' l'))
