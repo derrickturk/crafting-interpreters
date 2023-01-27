@@ -28,6 +28,7 @@ let run_file path =
   not !had_error
 
 let () =
+  (* Pptest.pptest (); *)
   match Sys.argv with
     | [|_|] ->
         run_interactive ()
