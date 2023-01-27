@@ -32,8 +32,8 @@ public class PrettyPrinter: Visitor<string> {
             BinOp.EqEq => "==",
             BinOp.Gt => ">",
             BinOp.GtEq => ">=",
-            BinOp.Lt => ">",
-            BinOp.LtEq => ">=",
+            BinOp.Lt => "<",
+            BinOp.LtEq => "<=",
             var o => throw new ArgumentException(
               $"invalid binary operator: {o}"),
         };
