@@ -140,7 +140,33 @@ public class Parser {
         return _tokens.Next?.Type == type;
     }
 
-    // TODO: private void Recover() // seek to "sync point"
+    // seek to "sync point" (see ch6)
+    private void Recover() 
+    {
+        while (true) {
+            if (Match(TokenType.Semicolon) != null)
+                return;
+
+            _tokens.Advance();
+
+            if (_tokens.Next == null)
+                return;
+
+            switch (_tokens.Next.Value.Type) {
+                case TokenType.Class:
+                case TokenType.Fun:
+                case TokenType.Var:
+                case TokenType.For:
+                case TokenType.If:
+                case TokenType.While:
+                case TokenType.Print:
+                case TokenType.Return:
+                    return;
+                default:
+                    break;
+            }
+        }
+    }
 
     private class ParseError: Exception { }
 
