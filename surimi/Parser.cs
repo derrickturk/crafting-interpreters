@@ -21,51 +21,28 @@ public class Parser {
         return Equality();
     }
 
-    // TODO: de-duplicate all these!
-    private Expr Equality()
+    private delegate Expr ExprParser();
+
+    private Expr BinOpFold(ExprParser parser, params TokenType[] types)
     {
-        var lhs = Comparison();
+        var lhs = parser();
         Token? op_tok;
-        while ((op_tok = Match(TokenType.NotEq, TokenType.EqEq)) != null) {
-            var rhs = Comparison();
+        while ((op_tok = Match(types)) != null) {
+            var rhs = parser();
             lhs = new BinOpApp(TokenBinOp(op_tok.Value), lhs, rhs);
         }
         return lhs;
     }
 
-    private Expr Comparison()
-    {
-        var lhs = Term();
-        Token? op_tok;
-        while ((op_tok = Match(
-          TokenType.Gt, TokenType.GtEq, TokenType.Lt, TokenType.LtEq)) != null) {
-            var rhs = Term();
-            lhs = new BinOpApp(TokenBinOp(op_tok.Value), lhs, rhs);
-        }
-        return lhs;
-    }
+    private Expr Equality() => BinOpFold(Comparison,
+      TokenType.NotEq, TokenType.EqEq);
 
-    private Expr Term()
-    {
-        var lhs = Factor();
-        Token? op_tok;
-        while ((op_tok = Match(TokenType.Plus, TokenType.Minus)) != null) {
-            var rhs = Factor();
-            lhs = new BinOpApp(TokenBinOp(op_tok.Value), lhs, rhs);
-        }
-        return lhs;
-    }
+    private Expr Comparison() => BinOpFold(Term,
+      TokenType.Gt, TokenType.GtEq, TokenType.Lt, TokenType.LtEq);
 
-    private Expr Factor()
-    {
-        var lhs = Unary();
-        Token? op_tok;
-        while ((op_tok = Match(TokenType.Star, TokenType.Slash)) != null) {
-            var rhs = Unary();
-            lhs = new BinOpApp(TokenBinOp(op_tok.Value), lhs, rhs);
-        }
-        return lhs;
-    }
+    private Expr Term() => BinOpFold(Factor, TokenType.Plus, TokenType.Minus);
+
+    private Expr Factor() => BinOpFold(Unary, TokenType.Star, TokenType.Slash);
 
     private Expr Unary()
     {
