@@ -118,7 +118,7 @@ public class Parser {
     }
 
     // seek to "sync point" (see ch6)
-    private void Recover() 
+    private void Recover()
     {
         while (true) {
             if (Match(TokenType.Semicolon) != null)
