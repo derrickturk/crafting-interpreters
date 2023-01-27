@@ -6,7 +6,6 @@ using System.IO;
 static class App {
     public static int Main(string[] args)
     {
-        // PPTest();
         switch (args.Length) {
             case 0:
                 return RunInteractive();
@@ -54,26 +53,5 @@ static class App {
         }
 
         return 0;
-    }
-
-    private static void PPTest()
-    {
-        var expr = new BinOpApp(
-            BinOp.Plus,
-            new BinOpApp(
-                BinOp.GtEq,
-                new UnOpApp(
-                    UnOp.Not,
-                    new Literal(true)
-                ),
-                new Literal(null)
-            ),
-            new BinOpApp(
-                BinOp.EqEq,
-                new Literal(36.5),
-                new Literal("potato")
-            )
-        );
-        Console.WriteLine(expr.Accept(new PrettyPrinter()));
     }
 }

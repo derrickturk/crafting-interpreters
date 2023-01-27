@@ -12,10 +12,12 @@ public class Interpreter {
     public void run(string code)
     {
         var toks = Lexer.Lex(code, _onError).ToList();
-        foreach (var t in toks)
-            Console.WriteLine($"beep boop: {t}");
+        var expr = Parser.Parse(Lexer.Lex(code, _onError), _onError);
         if (_onError.HadError)
             Console.Error.WriteLine("oh no");
+        else
+            Console.WriteLine(
+              $"Expression: {expr!.Accept(new PrettyPrinter())}");
     }
 
     private ErrorReporter _onError;

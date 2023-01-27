@@ -3,7 +3,12 @@ public class ErrorReporter {
 
     public void Error(int line, string msg)
     {
-        Report(line, "", msg);
+        Error(line, "", msg);
+    }
+
+    public void Error(int line, string whurr, string msg)
+    {
+        Report(line, whurr, msg);
         HadError = true;
     }
 
