@@ -9,18 +9,23 @@ use std::{
 #[derive(Clone, Debug)]
 pub struct Error {
     pub line: Option<usize>,
-    pub wurr: String, // wurr is it
+    pub lexeme: Option<String>,
     pub details: ErrorDetails,
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match self.line {
-            Some(line) => write!(f, "[line {}] Error{}: {}",
-              line, self.wurr, self.details),
-            None => write!(f, "[end of input] Error{}: {}",
-              self.wurr, self.details),
+        if let Some(line) = self.line {
+            write!(f, "[line {}] Error", line)?;
+        } else {
+            write!(f, "[end of input] Error")?;
         }
+
+        if let Some(lexeme) = &self.lexeme {
+            write!(f, " at \"{}\"", lexeme)?;
+        }
+
+        write!(f, ": {}", self.details)
     }
 }
 

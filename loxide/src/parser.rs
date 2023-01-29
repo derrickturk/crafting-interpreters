@@ -52,7 +52,7 @@ macro_rules! require {
             Some(Ok(tok)) => {
                 $self.errors.push(Error {
                     line: Some(tok.line),
-                    wurr: tok.lexeme.to_string(),
+                    lexeme: Some(tok.lexeme.to_string()),
                     details: ErrorDetails::ParseExpected($msg),
                 });
                 return None;
@@ -66,7 +66,7 @@ macro_rules! require {
             None => {
                 $self.errors.push(Error {
                     line: None,
-                    wurr: String::new(),
+                    lexeme: None,
                     details: ErrorDetails::ParseExpected($msg),
                 });
                 return None;

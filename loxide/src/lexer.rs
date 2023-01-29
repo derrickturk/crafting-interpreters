@@ -234,7 +234,7 @@ impl<'a> Iterator for Lexer<'a> {
                     }
                     return Some(Err(Error{
                         line: Some(self.line),
-                        wurr: String::new(),
+                        lexeme: None,
                         details: ErrorDetails::UnterminatedStrLit,
                     }));
                 },
@@ -266,7 +266,7 @@ impl<'a> Iterator for Lexer<'a> {
                 c => {
                     return Some(Err(Error {
                         line: Some(self.line),
-                        wurr: String::new(), // IDK what the author intends here
+                        lexeme: None,
                         details: ErrorDetails::UnexpectedCharacter(c),
                     }))
                 },
