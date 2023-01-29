@@ -6,6 +6,7 @@ let print_token_or_err = function
 
 let rec run_interactive () =
   try
+    Out_channel.(output_string stdout "> "; flush stdout);
     let line = read_line () in
     Seq.iter print_token_or_err (Lexical.lex line);
     run_interactive ()
