@@ -118,6 +118,26 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
 
         require!(self, "an expression")
     }
+
+    fn eof(&mut self) -> Option<()> {
+        match self.tokens.next() {
+            None => Some(()),
+
+            Some(Err(e)) => {
+                self.errors.push(e);
+                None
+            },
+
+            Some(Ok(tok)) => {
+                self.errors.push(Error {
+                    line: Some(tok.line),
+                    lexeme: Some(tok.lexeme.to_string()),
+                    details: ErrorDetails::ParseExpected("end of input"),
+                });
+                None
+            },
+        }
+    }
 }
 
 fn token_un_op(token: &Token<'_>) -> Option<UnOp> {
@@ -159,8 +179,10 @@ fn token_literal(token: &Token<'_>) -> Option<Value> {
 pub fn parse_expression<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
   tokens: I) -> Result<Expr, ErrorBundle> {
     let mut p = Parser::new(tokens);
-    match p.expression() {
-        Some(e) => Ok(e),
-        None => Err(p.errors),
+    if let Some(e) = p.expression() {
+        if let Some(()) = p.eof() {
+            return Ok(e);
+        }
     }
+    Err(p.errors)
 }
