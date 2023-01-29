@@ -10,7 +10,10 @@ public class Parser {
     public static Expr? Parse(IEnumerable<Token> tokens, ErrorReporter onError)
     {
         try {
-            return new Parser(tokens, onError).Expression();
+            var p = new Parser(tokens, onError);
+            var e = p.Expression();
+            p.RequireEOF();
+            return e;
         } catch (ParseError) {
             return null;
         }
@@ -101,7 +104,7 @@ public class Parser {
             throw new ParseError();
         }
 
-        Token tok = _tokens.Next.Value;
+        Token tok = _tokens.Next!.Value;
         _tokens.Advance();
         foreach (var type in types) {
             if (tok.Type == type)
@@ -110,6 +113,16 @@ public class Parser {
 
         _onError.Error(tok.Line, $" at '{tok.Lexeme}'", message);
         throw new ParseError();
+    }
+
+    private void RequireEOF()
+    {
+        if (_tokens.Next != null) {
+            _onError.Error(_tokens.Line,
+              $" at \"{_tokens.Next.Value.Lexeme}\"",
+              "expected end of input");
+            throw new ParseError();
+        }
     }
 
     private bool Check(TokenType type)

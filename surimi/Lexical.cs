@@ -9,7 +9,6 @@ public enum TokenType {
     Ident, StrLit, NumLit,
     And, Class, Else, False, Fun, For, If, Nil, Or, Print, Return, Super, This,
     True, Var, While,
-    Eof, // I don't trust this guy one bit
 }
 
 // I don't like this representation for tokens
@@ -26,13 +25,10 @@ public class Lexer {
         _onError = onError;
     }
 
-    public Token Next()
+    public Token? Next()
     {
-        while (true) {
+        while (!AtEnd) {
             _startptr = _nextptr;
-
-            if (AtEnd)
-                return HereToken(TokenType.Eof);
 
             char c = Consume();
             switch (c) {
@@ -131,16 +127,16 @@ public class Lexer {
                     break;
             }
         }
+
+        return null;
     }
 
     public static IEnumerable<Token> Lex(string input, ErrorReporter onError)
     {
         var l = new Lexer(input, onError);
-        while (true) {
-            Token next = l.Next();
-            yield return next;
-            if (next.Type == TokenType.Eof)
-                break;
+        Token? next;
+        while ((next = l.Next()) != null) {
+            yield return next.Value;
         }
     }
 
