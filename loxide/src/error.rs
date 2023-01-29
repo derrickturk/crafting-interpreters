@@ -8,23 +8,28 @@ use std::{
 /// Any old error
 #[derive(Clone, Debug)]
 pub struct Error {
-    pub line: usize,
+    pub line: Option<usize>,
     pub wurr: String, // wurr is it
     pub details: ErrorDetails,
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "[line {}] Error{}: {}", self.line, self.wurr, self.details)
+        match self.line {
+            Some(line) => write!(f, "[line {}] Error{}: {}",
+              line, self.wurr, self.details),
+            None => write!(f, "[end of input] Error{}: {}",
+              self.wurr, self.details),
+        }
     }
 }
 
 impl error::Error for Error { }
 
 /// The details of what went wrong
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum ErrorDetails {
-    ParseError { expected: String, found: String },
+    ParseExpected(&'static str),
     UnexpectedCharacter(char),
     UnterminatedStrLit,
 }
@@ -32,8 +37,8 @@ pub enum ErrorDetails {
 impl Display for ErrorDetails {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            ErrorDetails::ParseError { expected, found } =>
-                write!(f, "expected {}; found {}", expected, found),
+            ErrorDetails::ParseExpected(expected) =>
+                write!(f, "expected {}", expected),
             ErrorDetails::UnexpectedCharacter(c) =>
                 write!(f, "unexpected character {}", c),
             ErrorDetails::UnterminatedStrLit =>
@@ -43,3 +48,5 @@ impl Display for ErrorDetails {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+pub type ErrorBundle = Vec<Error>;

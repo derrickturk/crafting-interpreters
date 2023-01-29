@@ -72,9 +72,9 @@ impl<'a> TokenKind<'a> {
 /// A Lox token, along with the correponding lexeme text, and the line number
 #[derive(Copy, Clone, Debug)]
 pub struct Token<'a> {
-    kind: TokenKind<'a>,
-    lexeme: &'a str,
-    line: usize,
+    pub kind: TokenKind<'a>,
+    pub lexeme: &'a str,
+    pub line: usize,
 }
 
 /// A Lox lexer, holding the remaining source code
@@ -233,7 +233,7 @@ impl<'a> Iterator for Lexer<'a> {
                         }
                     }
                     return Some(Err(Error{
-                        line: self.line,
+                        line: Some(self.line),
                         wurr: String::new(),
                         details: ErrorDetails::UnterminatedStrLit,
                     }));
@@ -265,7 +265,7 @@ impl<'a> Iterator for Lexer<'a> {
 
                 c => {
                     return Some(Err(Error {
-                        line: self.line,
+                        line: Some(self.line),
                         wurr: String::new(), // IDK what the author intends here
                         details: ErrorDetails::UnexpectedCharacter(c),
                     }))
