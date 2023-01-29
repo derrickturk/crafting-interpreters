@@ -83,7 +83,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         }
     }
 
-    pub fn expression(&mut self) -> Option<Expr> {
+    fn expression(&mut self) -> Option<Expr> {
         self.equality()
     }
 
@@ -152,5 +152,15 @@ fn token_literal(token: &Token<'_>) -> Option<Value> {
         TokenKind::NumLit(n) => Some(Value::Number(n)),
         TokenKind::StrLit(s) => Some(Value::String(s.to_string())),
         _ => None,
+    }
+}
+
+#[inline]
+pub fn parse_expression<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
+  tokens: I) -> Result<Expr, ErrorBundle> {
+    let mut p = Parser::new(tokens);
+    match p.expression() {
+        Some(e) => Ok(e),
+        None => Err(p.errors),
     }
 }

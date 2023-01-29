@@ -4,8 +4,9 @@ pub mod parser;
 pub mod syntax;
 pub mod value;
 
+pub use error::{Error, ErrorBundle, ErrorDetails, Result};
 pub use lexer::{lex};
-pub use error::{Error, ErrorDetails, Result};
+pub use parser::{parse_expression};
 pub use value::{Value};
 
 #[cfg(test)]

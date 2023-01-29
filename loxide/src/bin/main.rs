@@ -7,37 +7,42 @@ use std::{
     process,
 };
 
-use loxide::{
-    lex
-};
+use loxide::{ErrorBundle, lex, parse_expression,};
 
-fn run(source: &str) -> Result<(), Box<dyn Error>> {
-    for tok in lex(source) {
-        println!("token: {:?}", tok);
-    }
+fn run(source: &str) -> Result<(), ErrorBundle> {
+    let ex = parse_expression(lex(source))?;
+    println!("expression: {:?}", ex);
+    println!("expression (pretty): {}", ex);
     Ok(())
 }
 
 fn run_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
     let mut source = String::new();
     File::open(path)?.read_to_string(&mut source)?;
-    run(&source)
+    Ok(run(&source)?)
 }
 
 fn run_prompt() -> Result<(), Box<dyn Error>> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
-    // TODO: swallow errors, but remember if any happened (for exit status)
+    let mut any_err = false;
     loop {
         write!(&mut stdout, "> ")?;
         stdout.flush()?;
         let mut line = String::new();
         match stdin.read_line(&mut line)? {
             0 => break,
-            _ => run(&line)?,
+            _ => if let Err(es) = run(&line) {
+                any_err = true;
+                eprint!("{}", es);
+            },
         };
     }
-    Ok(())
+    if any_err {
+        Err("at least one line resulted in an error".into())
+    } else {
+        Ok(())
+    }
 }
 
 fn main() {

@@ -49,4 +49,26 @@ impl Display for ErrorDetails {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub type ErrorBundle = Vec<Error>;
+#[derive(Clone, Debug)]
+pub struct ErrorBundle(pub Vec<Error>);
+
+impl ErrorBundle {
+    pub fn new() -> Self {
+        Self(Vec::new())
+    }
+
+    pub fn push(&mut self, err: Error) {
+        self.0.push(err);
+    }
+}
+
+impl Display for ErrorBundle {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        for err in &self.0 {
+            write!(f, "{}\n", err)?;
+        }
+        Ok(())
+    }
+}
+
+impl error::Error for ErrorBundle { }
