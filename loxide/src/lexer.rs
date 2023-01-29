@@ -274,3 +274,8 @@ impl<'a> Iterator for Lexer<'a> {
         }
     }
 }
+
+#[inline]
+pub fn lex(source: &str) -> impl Iterator<Item=error::Result<Token<'_>>> {
+    Lexer::new(source)
+}

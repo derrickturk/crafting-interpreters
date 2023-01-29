@@ -8,12 +8,11 @@ use std::{
 };
 
 use loxide::{
-    lex::Lexer,
+    lex
 };
 
 fn run(source: &str) -> Result<(), Box<dyn Error>> {
-    let lexer = Lexer::new(source);
-    for tok in lexer {
+    for tok in lex(source) {
         println!("token: {:?}", tok);
     }
     Ok(())

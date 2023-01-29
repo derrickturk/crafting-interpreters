@@ -22,8 +22,9 @@ impl Display for Error {
 impl error::Error for Error { }
 
 /// The details of what went wrong
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum ErrorDetails {
+    ParseError { expected: String, found: String },
     UnexpectedCharacter(char),
     UnterminatedStrLit,
 }
@@ -31,6 +32,8 @@ pub enum ErrorDetails {
 impl Display for ErrorDetails {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
+            ErrorDetails::ParseError { expected, found } =>
+                write!(f, "expected {}; found {}", expected, found),
             ErrorDetails::UnexpectedCharacter(c) =>
                 write!(f, "unexpected character {}", c),
             ErrorDetails::UnterminatedStrLit =>
