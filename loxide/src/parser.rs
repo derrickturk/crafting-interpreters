@@ -142,11 +142,10 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
     // recover to a ; or the point before a keyword
     fn recover(&mut self) {
         loop {
-            if let Some(_) = match_token!(self, TokenKind::Semicolon) {
-                return;
-            }
-
-            let _ = self.tokens.next();
+            match self.tokens.next() {
+                Some(Ok(Token { kind: TokenKind::Semicolon, .. })) => return,
+                _ => { },
+            };
 
             match self.tokens.peek() {
                 None => return,
