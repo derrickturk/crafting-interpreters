@@ -138,6 +138,33 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
             },
         }
     }
+
+    // recover to a ; or the point before a keyword
+    fn recover(&mut self) {
+        loop {
+            if let Some(_) = match_token!(self, TokenKind::Semicolon) {
+                return;
+            }
+
+            let _ = self.tokens.next();
+
+            match self.tokens.peek() {
+                None => return,
+                Some(Ok(Token {
+                    kind: TokenKind::Class
+                        | TokenKind::Fun
+                        | TokenKind::Var
+                        | TokenKind::For
+                        | TokenKind::If
+                        | TokenKind::While
+                        | TokenKind::Print
+                        | TokenKind::Return,
+                    ..
+                })) => return,
+                _ => { },
+            };
+        }
+    }
 }
 
 fn token_un_op(token: &Token<'_>) -> Option<UnOp> {
