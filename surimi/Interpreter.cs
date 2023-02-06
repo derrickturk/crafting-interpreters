@@ -9,9 +9,9 @@ public class Interpreter {
         _onError = onError;
     }
 
-    public void run(string code)
+    public void run(string code, string filename)
     {
-        var expr = Parser.Parse(Lexer.Lex(code, _onError), _onError);
+        var expr = Parser.Parse(Lexer.Lex(code, filename, _onError), _onError);
         if (_onError.HadError)
             return;
 
@@ -27,14 +27,10 @@ public class Interpreter {
         try {
             return expr.Accept(new ExprEvaluator());
         } catch (TypeError e) {
-            _onError.Error(
-              /* what, you coward? you don't have line numbers here. */0,
-              e.Payload);
+            _onError.Error(null, e.Payload);
             return null;
         } catch (DivZeroError) {
-            _onError.Error(
-              /* what, you coward? you don't have line numbers here. */0,
-              "division by zero");
+            _onError.Error(null, "division by zero");
             return null;
         }
     }

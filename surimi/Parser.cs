@@ -100,7 +100,7 @@ public class Parser {
     private Token Require(string message, params TokenType[] types)
     {
         if (_tokens.Next == null) {
-            _onError.Error(_tokens.Line, " at end of input", message);
+            _onError.Error(null, " at end of input", message);
             throw new ParseError();
         }
 
@@ -111,14 +111,14 @@ public class Parser {
                 return tok;
         }
 
-        _onError.Error(tok.Line, $" at '{tok.Lexeme}'", message);
+        _onError.Error(tok.Location, $" at '{tok.Lexeme}'", message);
         throw new ParseError();
     }
 
     private void RequireEOF()
     {
         if (_tokens.Next != null) {
-            _onError.Error(_tokens.Line,
+            _onError.Error(_tokens.Next.Value.Location,
               $" at \"{_tokens.Next.Value.Lexeme}\"",
               "expected end of input");
             throw new ParseError();

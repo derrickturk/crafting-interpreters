@@ -2,6 +2,8 @@ namespace Surimi;
 
 using System.Linq;
 
+public readonly record struct SrcLoc(string File, int Line, int Char);
+
 public enum TokenType {
     LParen, RParen, LBrace, RBrace,
     Comma, Dot, Minus, Plus, Semicolon, Slash, Star,
@@ -13,15 +15,17 @@ public enum TokenType {
 
 // I don't like this representation for tokens
 public readonly record struct Token(
-  TokenType Type, string Lexeme, object? Literal, int Line);
+  TokenType Type, string Lexeme, object? Literal, SrcLoc Location);
 
 public class Lexer {
-    public Lexer(string input, ErrorReporter onError)
+    public Lexer(string input, string filename, ErrorReporter onError)
     {
         _line = 1;
+        _char = 1;
         _startptr = 0;
         _nextptr = 0;
         _input = input.AsMemory();
+        _filename = filename;
         _onError = onError;
     }
 
@@ -80,7 +84,7 @@ public class Lexer {
                 case '\t':
                     break;
                 case '\n':
-                    ++_line;
+                    NewLine();
                     break;
 
                 case '"':
@@ -92,13 +96,14 @@ public class Lexer {
                                 return HereToken(TokenType.StrLit,
                                   token.Substring(1, token.Length - 2));
                             case '\n':
-                                ++_line;
+                                NewLine();
                                 break;
                             default:
                                 break;
                         }
                     }
-                    _onError.Error(_line, "unterminated string literal");
+                    _onError.Error(new SrcLoc(_filename, _line, _char),
+                      "unterminated string literal");
                     break;
 
                 default:
@@ -123,7 +128,8 @@ public class Lexer {
                         return HereToken(MaybeIdentTokenType(CurrentLexeme));
                     }
 
-                    _onError.Error(_line, $"unexpected character '{c}'");
+                    _onError.Error(new SrcLoc(_filename, _line, _char - 1),
+                      $"unexpected character '{c}'");
                     break;
             }
         }
@@ -131,9 +137,10 @@ public class Lexer {
         return null;
     }
 
-    public static IEnumerable<Token> Lex(string input, ErrorReporter onError)
+    public static IEnumerable<Token> Lex(string input, string filename,
+      ErrorReporter onError)
     {
-        var l = new Lexer(input, onError);
+        var l = new Lexer(input, filename, onError);
         Token? next;
         while ((next = l.Next()) != null) {
             yield return next.Value;
@@ -158,7 +165,9 @@ public class Lexer {
 
     protected Token HereToken(TokenType type, object? literal = null)
     {
-        return new Token(type, CurrentLexeme, literal, _line);
+        int startChar = _char - (_nextptr - _startptr);
+        return new Token(type, CurrentLexeme, literal,
+          new SrcLoc(_filename, _line, startChar));
     }
 
     protected bool AtEnd => _nextptr >= _input.Length;
@@ -171,12 +180,20 @@ public class Lexer {
     protected void Advance()
     {
         ++_nextptr;
+        ++_char;
     }
 
     // use with caution - just for 2-char lookahead on numbers at the moment
     protected void Retreat()
     {
         --_nextptr;
+        --_char;
+    }
+
+    protected void NewLine()
+    {
+        ++_line;
+        _char = 1;
     }
 
     private static bool IsAsciiDigit(char c) => c >= '0' && c <= '9';
@@ -209,8 +226,10 @@ public class Lexer {
     }
 
     private int _line;
+    private int _char;
     private int _startptr;
     private int _nextptr;
     private ReadOnlyMemory<char> _input;
+    private readonly string _filename;
     private ErrorReporter _onError;
 }
