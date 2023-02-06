@@ -32,7 +32,8 @@ public class Parser {
         Token? op_tok;
         while ((op_tok = Match(types)) != null) {
             var rhs = parser();
-            lhs = new BinOpApp(TokenBinOp(op_tok.Value), lhs, rhs);
+            lhs = new BinOpApp(TokenBinOp(op_tok.Value), lhs, rhs,
+              op_tok.Value.Location);
         }
         return lhs;
     }
@@ -52,25 +53,27 @@ public class Parser {
         Token? op_tok = Match(TokenType.Not, TokenType.Minus);
         if (op_tok != null) {
             var rhs = Unary();
-            return new UnOpApp(TokenUnOp(op_tok.Value), rhs);
+            return new UnOpApp(TokenUnOp(op_tok.Value), rhs,
+              op_tok.Value.Location);
         }
         return Primary();
     }
 
     private Expr Primary()
     {
-        if (Match(TokenType.Nil) != null)
-            return new Literal(null);
-
-        if (Match(TokenType.True) != null)
-            return new Literal(true);
-
-        if (Match(TokenType.False) != null)
-            return new Literal(false);
-
         Token? tok;
+
+        if ((tok = Match(TokenType.Nil)) != null)
+            return new Literal(null, tok.Value.Location);
+
+        if ((tok = Match(TokenType.True)) != null)
+            return new Literal(true, tok.Value.Location);
+
+        if ((tok = Match(TokenType.False)) != null)
+            return new Literal(false, tok.Value.Location);
+
         if ((tok = Match(TokenType.StrLit, TokenType.NumLit)) != null)
-            return new Literal(tok.Value.Literal);
+            return new Literal(tok.Value.Literal, tok.Value.Location);
 
         if (Match(TokenType.LParen) != null) {
             var e = Expression();
