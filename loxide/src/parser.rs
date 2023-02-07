@@ -3,8 +3,8 @@ use std::iter::Peekable;
 use crate::{
     error::{self, Error, ErrorBundle, ErrorDetails,},
     lexer::{Token, TokenKind,},
-    syntax::{UnOp, BinOp, Expr,},
-    value::{Value,},
+    syntax::*,
+    value::Value,
 };
 
 pub struct Parser<'a, I: Iterator<Item=error::Result<Token<'a>>>> {
@@ -204,7 +204,7 @@ fn token_literal(token: &Token<'_>) -> Option<Value> {
 }
 
 #[inline]
-pub fn parse_expression<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
+pub fn parse_expr<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
   tokens: I) -> Result<Expr, ErrorBundle> {
     let mut p = Parser::new(tokens);
     if let Some(e) = p.expression() {

@@ -7,12 +7,11 @@ use std::{
     process,
 };
 
-use loxide::{ErrorBundle, lex, parse_expression,};
+use loxide::{ErrorBundle, eval_expr, lex, parse_expr,};
 
 fn run(source: &str) -> Result<(), ErrorBundle> {
-    let ex = parse_expression(lex(source))?;
-    println!("expression: {:?}", ex);
-    println!("expression (pretty): {}", ex);
+    let ex = parse_expr(lex(source))?;
+    println!("{}", eval_expr(&ex)?);
     Ok(())
 }
 

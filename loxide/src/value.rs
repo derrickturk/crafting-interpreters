@@ -3,7 +3,7 @@
 use std::fmt;
 
 /// A runtime Loxide value in the interpreter; also used to represent literals
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Nil,
     Bool(bool),
