@@ -37,6 +37,13 @@ public class Interpreter {
 
     private ErrorReporter _onError;
 
+    private static bool ValueTruthy(object? val) => val switch
+    {
+        null => false,
+        false => false,
+        _ => true,
+    };
+
     private static bool ValueEquals(object? lhs, object? rhs) =>
         lhs == null ? rhs == null : lhs.Equals(rhs);
 
@@ -67,19 +74,7 @@ public class Interpreter {
         public object? VisitLiteral(Literal e) => e.Value;
 
         public object VisitUnOpApp(UnOpApp e) =>
-            (e.Operator, e.Operand.Accept(this)) switch
-            {
-                (UnOp.Not, bool b) => !b,
-                (UnOp.Not, _) =>
-                    throw new TypeError(
-                      e.Location, "operand to ! must be boolean"),
-                (UnOp.Negate, double d) => -d,
-                (UnOp.Negate, _) =>
-                    throw new TypeError(
-                      e.Location, "operand to - must be number"),
-                _ => throw new InvalidOperationException(
-                  "invalid unary operator"),
-            };
+            !ValueTruthy(e.Operand.Accept(this));
 
         public object VisitBinOpApp(BinOpApp e)
         {

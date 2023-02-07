@@ -18,13 +18,8 @@ pub fn eval_expr(expr: &Expr) -> error::Result<Value> {
     match expr {
         Expr::Literal(v, _) => Ok(v.clone()),
 
-        Expr::UnOpApp(UnOp::Complement, e, loc) => {
-            if let Value::Bool(b) = eval_expr(e)? {
-                Ok(Value::Bool(!b))
-            } else {
-                Err(type_error!(*loc, "!", "operand must be boolean"))
-            }
-        },
+        Expr::UnOpApp(UnOp::Complement, e, _) =>
+            Ok(Value::Bool(!eval_expr(e)?.truthy())),
 
         Expr::UnOpApp(UnOp::Negate, e, loc) => {
             if let Value::Number(n) = eval_expr(e)? {
