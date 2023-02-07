@@ -1,6 +1,9 @@
 //! Tokens and the Loxide lexer/scanner
 
-use crate::error::{self, Error, ErrorDetails};
+use crate::{
+    error::{self, Error, ErrorDetails},
+    srcloc::SrcLoc,
+};
 
 /// The type and payload (if any) of a Lox token
 #[derive(Copy, Clone, Debug)]
@@ -74,7 +77,7 @@ impl<'a> TokenKind<'a> {
 pub struct Token<'a> {
     pub kind: TokenKind<'a>,
     pub lexeme: &'a str,
-    pub line: usize,
+    pub loc: SrcLoc,
 }
 
 /// A Lox lexer, holding the remaining source code
@@ -82,13 +85,14 @@ pub struct Token<'a> {
 pub struct Lexer<'a> {
     source: &'a str,
     line: usize,
+    pos: usize,
     next_offset: usize,
 }
 
 impl<'a> Lexer<'a> {
     #[inline]
     pub fn new(source: &'a str) -> Self {
-        Self { source, line: 0, next_offset: 0 }
+        Self { source, line: 1, pos: 1, next_offset: 0 }
     }
 
     /* this is extra horrible because we have to also attach the
@@ -111,6 +115,7 @@ impl<'a> Lexer<'a> {
     fn consume(&mut self) -> Option<char> {
         if let Some(c) = self.peek() {
             self.next_offset += c.len_utf8();
+            self.pos += 1;
             Some(c)
         } else {
             None
@@ -127,6 +132,7 @@ impl<'a> Lexer<'a> {
         match self.peek() {
             Some(c) if pred(c) => {
                 self.next_offset += c.len_utf8();
+                self.pos += 1;
                 true
             },
             _ => false,
@@ -143,17 +149,21 @@ impl<'a> Lexer<'a> {
         self.source.split_at(self.next_offset)
     }
 
-    fn commit_here(&mut self) -> &'a str {
+    fn commit_here(&mut self) -> (&'a str, SrcLoc) {
         let (lexeme, rest) = self.split_here();
+        let loc = SrcLoc {
+            line: self.line,
+            pos: self.pos - self.next_offset, 
+        };
         self.source = rest;
         self.next_offset = 0;
-        lexeme
+        (lexeme, loc)
     }
 
     #[inline]
     fn token_here(&mut self, kind: TokenKind<'a>) -> Token<'a> {
-        let lexeme = self.commit_here();
-        Token { kind, lexeme, line: self.line }
+        let (lexeme, loc) = self.commit_here();
+        Token { kind, lexeme, loc }
     }
 }
 
@@ -164,7 +174,11 @@ impl<'a> Iterator for Lexer<'a> {
         loop {
             match self.consume()? {
                 ' ' | '\r' | '\t' =>  { self.commit_here(); },
-                '\n' => { self.line += 1; self.commit_here(); },
+                '\n' => {
+                    self.line += 1;
+                    self.pos = 1;
+                    self.commit_here();
+                },
 
                 '(' => return Some(Ok(self.token_here(TokenKind::LParen))),
                 ')' => return Some(Ok(self.token_here(TokenKind::RParen))),
@@ -228,12 +242,12 @@ impl<'a> Iterator for Lexer<'a> {
                                 return Some(Ok(
                                   self.token_here(TokenKind::StrLit(this))));
                             },
-                            '\n' => { self.line += 1; },
+                            '\n' => { self.line += 1; self.pos = 1; },
                             _ => { },
                         }
                     }
                     return Some(Err(Error{
-                        line: Some(self.line),
+                        loc: Some(SrcLoc { line: self.line, pos: self.pos }),
                         lexeme: None,
                         details: ErrorDetails::UnterminatedStrLit,
                     }));
@@ -265,7 +279,7 @@ impl<'a> Iterator for Lexer<'a> {
 
                 c => {
                     return Some(Err(Error {
-                        line: Some(self.line),
+                        loc: Some(SrcLoc { line: self.line, pos: self.pos - 1 }),
                         lexeme: None,
                         details: ErrorDetails::UnexpectedCharacter(c),
                     }))

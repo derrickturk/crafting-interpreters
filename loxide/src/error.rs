@@ -5,18 +5,20 @@ use std::{
     fmt::{self, Display, Formatter},
 };
 
+use crate::srcloc::SrcLoc;
+
 /// Any old error
 #[derive(Clone, Debug)]
 pub struct Error {
-    pub line: Option<usize>,
+    pub loc: Option<SrcLoc>,
     pub lexeme: Option<String>,
     pub details: ErrorDetails,
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        if let Some(line) = self.line {
-            write!(f, "[line {}] Error", line)?;
+        if let Some(loc) = self.loc {
+            write!(f, "[line {}, char {}] Error", loc.line, loc.pos)?;
         } else {
             write!(f, "[end of input] Error")?;
         }

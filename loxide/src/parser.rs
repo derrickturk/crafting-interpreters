@@ -51,7 +51,7 @@ macro_rules! require {
 
             Some(Ok(tok)) => {
                 $self.errors.push(Error {
-                    line: Some(tok.line),
+                    loc: Some(tok.loc),
                     lexeme: Some(tok.lexeme.to_string()),
                     details: ErrorDetails::ParseExpected($msg),
                 });
@@ -65,7 +65,7 @@ macro_rules! require {
 
             None => {
                 $self.errors.push(Error {
-                    line: None,
+                    loc: None,
                     lexeme: None,
                     details: ErrorDetails::ParseExpected($msg),
                 });
@@ -130,7 +130,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
 
             Some(Ok(tok)) => {
                 self.errors.push(Error {
-                    line: Some(tok.line),
+                    loc: Some(tok.loc),
                     lexeme: Some(tok.lexeme.to_string()),
                     details: ErrorDetails::ParseExpected("end of input"),
                 });

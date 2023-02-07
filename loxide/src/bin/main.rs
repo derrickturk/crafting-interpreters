@@ -32,7 +32,7 @@ fn run_prompt() -> Result<(), Box<dyn Error>> {
         let mut line = String::new();
         match stdin.read_line(&mut line)? {
             0 => break,
-            _ => if let Err(es) = run(&line) {
+            _ => if let Err(es) = run(line.trim_end()) {
                 any_err = true;
                 eprint!("{}", es);
             },
