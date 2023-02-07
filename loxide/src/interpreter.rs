@@ -65,17 +65,8 @@ pub fn eval_expr(expr: &Expr) -> error::Result<Value> {
 
         Expr::BinOpApp(BinOp::Div, lhs, rhs, loc) => {
             match (eval_expr(lhs)?, eval_expr(rhs)?) {
-                (Value::Number(l), Value::Number(r)) => {
-                    if r == 0.0 {
-                        Err(Error {
-                            loc: Some(*loc),
-                            lexeme: Some("/".to_string()),
-                            details: ErrorDetails::DivideByZero,
-                        })
-                    } else {
-                        Ok(Value::Number(l / r))
-                    }
-                },
+                (Value::Number(l), Value::Number(r)) =>
+                    Ok(Value::Number(l / r)),
                 _ => Err(type_error!(*loc, "/", "operands must be numbers")),
             }
         },

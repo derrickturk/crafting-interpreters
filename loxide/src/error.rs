@@ -39,7 +39,6 @@ pub enum ErrorDetails {
     ParseExpected(&'static str),
     UnexpectedCharacter(char),
     UnterminatedStrLit,
-    DivideByZero,
     TypeError(&'static str), // TODO: we could make this WAY more structured
 }
 
@@ -52,8 +51,6 @@ impl Display for ErrorDetails {
                 write!(f, "unexpected character {}", c),
             ErrorDetails::UnterminatedStrLit =>
                 write!(f, "unterminated string literal"),
-            ErrorDetails::DivideByZero =>
-                write!(f, "division by zero"),
             ErrorDetails::TypeError(msg) =>
                 write!(f, "type error: {}", msg),
         }

@@ -29,9 +29,6 @@ public class Interpreter {
         } catch (TypeError e) {
             _onError.Error(e.Location, e.Payload);
             return null;
-        } catch (DivZeroError) {
-            _onError.Error(expr.Location, "division by zero");
-            return null;
         }
     }
 
@@ -68,8 +65,6 @@ public class Interpreter {
         public string Payload { get; init; }
     }
 
-    private class DivZeroError: Exception { }
-
     private class ExprEvaluator: Visitor<object?> {
         public object? VisitLiteral(Literal e) => e.Value;
 
@@ -104,7 +99,6 @@ public class Interpreter {
                     throw new TypeError(
                       e.Location, "operands to * must be numbers"),
 
-                (BinOp.DividedBy, double _, 0.0) => throw new DivZeroError(),
                 (BinOp.DividedBy, double lhs, double rhs) => lhs / rhs,
                 (BinOp.DividedBy, _, _) =>
                     throw new TypeError(
