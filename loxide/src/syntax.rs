@@ -3,6 +3,7 @@
 use std::fmt;
 
 use crate::{
+    srcloc::SrcLoc,
     value::Value,
 };
 
@@ -55,20 +56,19 @@ impl fmt::Display for BinOp {
 }
 
 /// A Lox expression
-// TODO: tag with line number from tokens?
 #[derive(Clone, Debug)]
 pub enum Expr {
-    Literal(Value),
-    UnOpApp(UnOp, Box<Expr>),
-    BinOpApp(BinOp, Box<Expr>, Box<Expr>),
+    Literal(Value, SrcLoc),
+    UnOpApp(UnOp, Box<Expr>, SrcLoc),
+    BinOpApp(BinOp, Box<Expr>, Box<Expr>, SrcLoc),
 }
 
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expr::Literal(v) => write!(f, "{}", v),
-            Expr::UnOpApp(op, e) => write!(f, "{}{}", op, e),
-            Expr::BinOpApp(op, lhs, rhs) =>
+            Expr::Literal(v, _) => write!(f, "{}", v),
+            Expr::UnOpApp(op, e, _) => write!(f, "{}{}", op, e),
+            Expr::BinOpApp(op, lhs, rhs, _) =>
               write!(f, "({} {} {})", lhs, op, rhs),
         }
     }

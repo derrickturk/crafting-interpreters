@@ -35,7 +35,7 @@ macro_rules! fold_bin_op {
             while let Some(tok) = match_token!(self, $($p),*) {
                 let rhs = self.$parser()?;
                 lhs = Expr::BinOpApp(token_bin_op(&tok).unwrap(),
-                  Box::new(lhs), Box::new(rhs));
+                  Box::new(lhs), Box::new(rhs), tok.loc);
             }
             Some(lhs)
         }
@@ -97,7 +97,8 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         if let Some(tok) =
           match_token!(self, TokenKind::Not | TokenKind::Minus) {
             let rhs = self.unary()?;
-            Some(Expr::UnOpApp(token_un_op(&tok).unwrap(), Box::new(rhs)))
+            Some(Expr::UnOpApp(
+              token_un_op(&tok).unwrap(), Box::new(rhs), tok.loc))
         } else {
             self.primary()
         }
@@ -107,7 +108,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         if let Some(tok) = match_token!(self,
           TokenKind::Nil | TokenKind::True | TokenKind::False |
           TokenKind::StrLit(_) | TokenKind::NumLit(_)) {
-            return Some(Expr::Literal(token_literal(&tok).unwrap()));
+            return Some(Expr::Literal(token_literal(&tok).unwrap(), tok.loc));
         }
 
         if let Some(_) = match_token!(self, TokenKind::LParen) {
@@ -144,6 +145,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         loop {
             match self.tokens.next() {
                 Some(Ok(Token { kind: TokenKind::Semicolon, .. })) => return,
+                Some(Err(e)) => { self.errors.push(e) },
                 _ => { },
             };
 
