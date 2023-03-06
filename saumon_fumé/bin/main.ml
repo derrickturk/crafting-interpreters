@@ -4,7 +4,7 @@ let run src =
   let open Parser in
   let open Syntax in
   let print_error e =
-    Printf.eprintf "Error: %s\n" (Error.show e);
+    Printf.eprintf "Error: %s\n" (Error.pprint e);
     Out_channel.(flush stderr)
   in
   match parse_expr src with
@@ -21,7 +21,9 @@ let rec run_interactive () =
     let line = read_line () in
     let _ = run line in
     run_interactive ()
-  with End_of_file -> ()
+  with End_of_file ->
+    print_endline "";
+    ()
 
 let run_file path =
   let src = try
