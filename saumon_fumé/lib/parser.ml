@@ -97,7 +97,7 @@ module Parser = struct
 
   and primary p =
     let literal =
-      let open Interpreter in
+      let open Value in
       function
         | L.Nil -> Some Nil
         | True -> Some (Bool true)

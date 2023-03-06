@@ -1,8 +1,1 @@
-type value =
-  | Nil
-  | Bool of bool
-  | Num of float
-  | Str of string
-  [@@deriving show]
-
-val pprint_value: value -> string
+val eval_expr: Syntax.expr -> (Value.t, Error.t) result

@@ -21,7 +21,7 @@ type binary_op =
 val pprint_binary_op: binary_op -> string
 
 type expr =
-  | Lit of Interpreter.value
+  | Lit of Value.t
   | UnaryOp of unary_op * expr
   | BinaryOp of binary_op * expr * expr
   [@@deriving show]

@@ -33,13 +33,13 @@ let pprint_binary_op = function
   | GtEq -> ">="
 
 type expr =
-  | Lit of Interpreter.value
+  | Lit of Value.t
   | UnaryOp of unary_op * expr
   | BinaryOp of binary_op * expr * expr
   [@@deriving show]
 
 let rec pprint_expr = function
-  | Lit v -> Interpreter.pprint_value v
+  | Lit v -> Value.pprint v
   | UnaryOp(op, e) -> Printf.sprintf "%s%s" (pprint_unary_op op) (pprint_expr e)
   | BinaryOp(op, lhs, rhs) -> Printf.sprintf "%s %s %s"
       (pprint_expr lhs) (pprint_binary_op op) (pprint_expr rhs)
