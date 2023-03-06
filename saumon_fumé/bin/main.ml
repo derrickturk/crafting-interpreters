@@ -1,14 +1,25 @@
 open Saumon_fume
 
-let print_token_or_err = function
-  | Ok t -> print_endline (Lexical.show_token t)
-  | Error e -> print_endline (Error.show e)
+let run src =
+  let open Parser in
+  let open Syntax in
+  let print_error e =
+    Printf.eprintf "Error: %s\n" (Error.show e);
+    Out_channel.(flush stderr)
+  in
+  match parse_expr src with
+    | Ok e ->
+        print_endline (show_expr e);
+        true
+    | Error es ->
+        List.iter print_error es;
+        false
 
 let rec run_interactive () =
   try
     Out_channel.(output_string stdout "> "; flush stdout);
     let line = read_line () in
-    Seq.iter print_token_or_err (Lexical.lex line);
+    let _ = run line in
     run_interactive ()
   with End_of_file -> ()
 
@@ -18,18 +29,9 @@ let run_file path =
   with
     _ -> Printf.eprintf "Unable to read %s\n" path; exit 2
   in
-  let had_error = ref false in
-  let for_token = function
-    | Ok(tok) -> print_endline (Lexical.show_token tok)
-    | Error(e) ->
-        Printf.eprintf "Error: %s\n" (Error.show e);
-        had_error := true
-  in
-  Seq.iter for_token (Lexical.lex src);
-  not !had_error
+  run src
 
 let () =
-  (* Pptest.pptest (); *)
   match Sys.argv with
     | [|_|] ->
         run_interactive ()
