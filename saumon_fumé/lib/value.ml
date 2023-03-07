@@ -5,6 +5,11 @@ type t =
   | Str of string
   [@@deriving show]
 
+let truthy = function
+  | Nil -> false
+  | Bool false -> false
+  | _ -> true
+
 let pprint = function
   | Nil -> "nil"
   | Bool true -> "true"

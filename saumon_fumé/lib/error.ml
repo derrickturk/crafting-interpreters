@@ -1,11 +1,13 @@
 type details =
   | ParseExpected of string
+  | TypeError of string
   | UnexpectedCharacter of char
   | UnterminatedStrLit
   [@@deriving show]
 
 let pprint_details = function
   | ParseExpected what -> "expected " ^ what
+  | TypeError msg -> "type error: " ^ msg
   | UnexpectedCharacter c -> "unexpected character " ^ String.make 1 c
   | UnterminatedStrLit -> "unterminated string literal"
 

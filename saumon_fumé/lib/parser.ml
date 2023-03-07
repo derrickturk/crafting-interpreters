@@ -18,7 +18,7 @@ module Parser = struct
     | Cons (Ok tok, tl) -> begin match f tok.kind with
         | Some v ->
             p.input <- tl;
-            Some v
+            Some (v, tok)
         | None -> None
       end
     | _ -> None
@@ -53,10 +53,10 @@ module Parser = struct
     let open Syntax in
     let rec go lhs = match match_token_opt p op_fn with
       | None -> Some lhs
-      | Some op ->
+      | Some (op, tok) ->
           match expr_p p with
             | None -> None
-            | Some rhs -> go (BinaryOp (op, lhs, rhs))
+            | Some rhs -> go (BinaryOp (op, lhs, rhs, tok.line))
     in
     match expr_p p with
       | None -> None
@@ -88,9 +88,9 @@ module Parser = struct
       | _ -> None
     in
     match match_token_opt p unary_op with
-      | Some op -> begin
+      | Some (op, tok) -> begin
           match unary p with
-            | Some rhs -> Some (UnaryOp (op, rhs))
+            | Some rhs -> Some (UnaryOp (op, rhs, tok.line))
             | None -> None
         end
       | None -> primary p
@@ -108,7 +108,7 @@ module Parser = struct
     in
     let open Syntax in
     match match_token_opt p literal with
-      | Some lit -> Some (Lit lit)
+      | Some (lit, tok) -> Some (Lit (lit, tok.line))
       | None -> match match_token p LParen with
           | Some _ ->
               let e = expression p in

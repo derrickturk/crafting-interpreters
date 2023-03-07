@@ -1,29 +1,37 @@
 open Saumon_fume
 
 let run src =
+  let open Interpreter in
   let open Parser in
-  let open Syntax in
   let print_error e =
     Printf.eprintf "Error: %s\n" (Error.pprint e);
     Out_channel.(flush stderr)
   in
   match parse_expr src with
-    | Ok e ->
-        print_endline (show_expr e);
-        true
     | Error es ->
         List.iter print_error es;
         false
+    | Ok e ->
+        match eval_expr e with
+          | Error e ->
+              print_error e;
+              false
+          | Ok v ->
+              print_endline (Value.pprint v);
+              true
 
-let rec run_interactive () =
-  try
-    Out_channel.(output_string stdout "> "; flush stdout);
-    let line = read_line () in
-    let _ = run line in
-    run_interactive ()
-  with End_of_file ->
-    print_endline "";
-    ()
+let run_interactive () =
+  let no_errors = ref true in
+  let rec go () =
+    try
+      Out_channel.(output_string stdout "> "; flush stdout);
+      let line = read_line () in
+      if not (run line) then no_errors := false;
+      go ()
+    with End_of_file ->
+      print_endline "";
+      !no_errors
+  in go ()
 
 let run_file path =
   let src = try
@@ -36,7 +44,7 @@ let run_file path =
 let () =
   match Sys.argv with
     | [|_|] ->
-        run_interactive ()
+        if not (run_interactive ()) then exit 1 else ()
     | [|_; file|] ->
         if not (run_file file) then exit 1 else ()
     | args ->

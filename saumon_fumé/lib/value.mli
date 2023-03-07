@@ -5,4 +5,6 @@ type t =
   | Str of string
   [@@deriving show]
 
+val truthy: t -> bool
+
 val pprint: t -> string

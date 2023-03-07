@@ -1,5 +1,6 @@
 type details =
   | ParseExpected of string
+  | TypeError of string
   | UnexpectedCharacter of char
   | UnterminatedStrLit
   [@@deriving show]
