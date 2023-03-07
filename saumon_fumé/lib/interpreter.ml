@@ -26,6 +26,14 @@ let rec eval_expr =
               details = TypeError "operand must be number"
             }
         end
+    | BinaryOp (Eq, e1, e2, _) ->
+        let* lhs = eval_expr e1
+        and* rhs = eval_expr e2
+        in Ok (Bool (lhs = rhs))
+    | BinaryOp (NotEq, e1, e2, _) ->
+        let* lhs = eval_expr e1
+        and* rhs = eval_expr e2
+        in Ok (Bool (lhs != rhs))
     | BinaryOp (Add, e1, e2, line) ->
         let* lhs = eval_expr e1
         and* rhs = eval_expr e2 in
@@ -43,10 +51,10 @@ let rec eval_expr =
               details = TypeError "operands must be numbers or strings"
             }
         end
-    | BinaryOp (op, e1, e2, line) ->
+    | BinaryOp ((Sub | Mul | Div | Lt | LtEq | Gt | GtEq) as o, e1, e2, line) ->
         let* lhs = eval_expr e1
         and* rhs = eval_expr e2 in
-        let op_fn, op_lexeme = numeric_op op in
+        let op_fn, op_lexeme = numeric_op o in
         begin match lhs, rhs with
           | Num n1, Num n2 -> Ok (op_fn n1 n2)
           | _ -> Error {

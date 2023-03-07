@@ -14,5 +14,5 @@ let pprint = function
   | Nil -> "nil"
   | Bool true -> "true"
   | Bool false -> "false"
-  | Num f -> string_of_float f
+  | Num f -> Printf.sprintf "%g" f
   | Str s -> Printf.sprintf "\"%s\"" s
