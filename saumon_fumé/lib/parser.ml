@@ -1,6 +1,8 @@
 module Parser = struct
   module L = Lexical
 
+  open Option_monad
+
   type t = {
     mutable input: (L.token, Error.t) result Seq.t;
     mutable errors: Error.t list
@@ -15,12 +17,10 @@ module Parser = struct
     | _ -> None
 
   let match_token_opt p f = match p.input () with
-    | Cons (Ok tok, tl) -> begin match f tok.kind with
-        | Some v ->
-            p.input <- tl;
-            Some (v, tok)
-        | None -> None
-      end
+    | Cons (Ok tok, tl) ->
+        let+ v = f tok.kind in
+        p.input <- tl;
+        (v, tok)
     | _ -> None
 
   let require p f what = match p.input () with
@@ -54,13 +54,11 @@ module Parser = struct
     let rec go lhs = match match_token_opt p op_fn with
       | None -> Some lhs
       | Some (op, tok) ->
-          match expr_p p with
-            | None -> None
-            | Some rhs -> go (BinaryOp (op, lhs, rhs, tok.line))
+          let* rhs = expr_p p in
+          go (BinaryOp (op, lhs, rhs, tok.line))
     in
-    match expr_p p with
-      | None -> None
-      | Some lhs -> go lhs
+    let* lhs = expr_p p in
+    go lhs
 
   let rec expression p = equality p
 
@@ -88,11 +86,9 @@ module Parser = struct
       | _ -> None
     in
     match match_token_opt p unary_op with
-      | Some (op, tok) -> begin
-          match unary p with
-            | Some rhs -> Some (UnaryOp (op, rhs, tok.line))
-            | None -> None
-        end
+      | Some (op, tok) ->
+          let+ rhs = unary p in
+          UnaryOp (op, rhs, tok.line)
       | None -> primary p
 
   and primary p =
