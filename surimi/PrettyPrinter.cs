@@ -1,6 +1,6 @@
 namespace Surimi;
 
-public class PrettyPrinter: Visitor<string> {
+public class ExprPrettyPrinter: ExprVisitor<string> {
     public string VisitLiteral(Literal e) => e.Value switch
     {
         null => "nil",
@@ -39,8 +39,14 @@ public class PrettyPrinter: Visitor<string> {
         };
         return $"({lhs} {op} {rhs})";
     }
+}
 
-    public string VisitPrint(Print s) => $"print {s.Expression.Accept(this)};";
+public class StmtPrettyPrinter: StmtVisitor<string> {
+    public string VisitPrint(Print s) =>
+      $"print {s.Expression.Accept(_exprVisitor)};";
 
-    public string VisitExprStmt(ExprStmt s) => $"{s.Expression.Accept(this)};";
+    public string VisitExprStmt(ExprStmt s) =>
+      $"{s.Expression.Accept(_exprVisitor)};";
+
+    private ExprVisitor<string> _exprVisitor = new ExprPrettyPrinter();
 }

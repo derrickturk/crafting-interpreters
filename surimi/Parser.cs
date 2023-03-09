@@ -1,5 +1,7 @@
 namespace Surimi;
 
+using System.Collections.Generic;
+
 public class Parser {
     public Parser(IEnumerable<Token> tokens, ErrorReporter onError)
     {
@@ -7,16 +9,34 @@ public class Parser {
         _onError = onError;
     }
 
-    public static Expr? Parse(IEnumerable<Token> tokens, ErrorReporter onError)
+    public static List<Stmt>? Parse(IEnumerable<Token> tokens,
+      ErrorReporter onError)
     {
+        var p = new Parser(tokens, onError);
+        var prog = new List<Stmt>();
         try {
-            var p = new Parser(tokens, onError);
-            var e = p.Expression();
+            while (!p.AtEOF())
+                prog.Add(p.Statement());
             p.RequireEOF();
-            return e;
         } catch (ParseError) {
             return null;
         }
+        return prog;
+    }
+
+    private Stmt Statement()
+    {
+        Token? tok;
+        Expr e;
+        if ((tok = Match(TokenType.Print)) != null) {
+            e = Expression();
+            Require("expected ';'", TokenType.Semicolon);
+            return new Print(e, tok.Value.Location);
+        }
+
+        e = Expression();
+        Require("expected ';'", TokenType.Semicolon);
+        return new ExprStmt(e, e.Location);
     }
 
     private Expr Expression()
@@ -118,20 +138,19 @@ public class Parser {
         throw new ParseError();
     }
 
+    private bool AtEOF() => _tokens.Next == null;
+
     private void RequireEOF()
     {
-        if (_tokens.Next != null) {
-            _onError.Error(_tokens.Next.Value.Location,
-              $" at \"{_tokens.Next.Value.Lexeme}\"",
+        if (!AtEOF()) {
+            _onError.Error(_tokens.Next!.Value.Location,
+              $" at \"{_tokens.Next!.Value.Lexeme}\"",
               "expected end of input");
             throw new ParseError();
         }
     }
 
-    private bool Check(TokenType type)
-    {
-        return _tokens.Next?.Type == type;
-    }
+    private bool Check(TokenType type) => _tokens.Next?.Type == type;
 
     // seek to "sync point" (see ch6)
     private void Recover()

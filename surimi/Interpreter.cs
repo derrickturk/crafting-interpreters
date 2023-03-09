@@ -11,15 +11,17 @@ public class Interpreter {
 
     public void run(string code, string filename)
     {
-        var expr = Parser.Parse(Lexer.Lex(code, filename, _onError), _onError);
+        var prog = Parser.Parse(Lexer.Lex(code, filename, _onError), _onError);
         if (_onError.HadError)
             return;
 
+        /*
         object? v = EvaluateExpression(expr!);
         if (_onError.HadError)
             return;
 
         Console.WriteLine(ValueString(v));
+        */
     }
 
     private object? EvaluateExpression(Expr expr)
@@ -65,7 +67,7 @@ public class Interpreter {
         public string Payload { get; init; }
     }
 
-    private class ExprEvaluator: Visitor<object?> {
+    private class ExprEvaluator: ExprVisitor<object?> {
         public object? VisitLiteral(Literal e) => e.Value;
 
         public object VisitUnOpApp(UnOpApp e) =>
@@ -131,11 +133,5 @@ public class Interpreter {
                   "invalid binary operator"),
             };
         }
-
-        public object VisitPrint(Print s) =>
-            throw new InvalidOperationException("not an expression");
-
-        public object VisitExprStmt(ExprStmt s) =>
-            throw new InvalidOperationException("not an expression");
     }
 }
