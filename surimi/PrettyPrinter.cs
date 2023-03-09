@@ -39,4 +39,8 @@ public class PrettyPrinter: Visitor<string> {
         };
         return $"({lhs} {op} {rhs})";
     }
+
+    public string VisitPrint(Print s) => $"print {s.Expression.Accept(this)};";
+
+    public string VisitExprStmt(ExprStmt s) => $"{s.Expression.Accept(this)};";
 }

@@ -131,5 +131,11 @@ public class Interpreter {
                   "invalid binary operator"),
             };
         }
+
+        public object VisitPrint(Print s) =>
+            throw new InvalidOperationException("not an expression");
+
+        public object VisitExprStmt(ExprStmt s) =>
+            throw new InvalidOperationException("not an expression");
     }
 }
