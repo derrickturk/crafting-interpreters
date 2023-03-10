@@ -39,6 +39,11 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
         };
         return $"({lhs} {op} {rhs})";
     }
+
+    public string VisitVar(Var e)
+    {
+        return e.Name;
+    }
 }
 
 public class StmtPrettyPrinter: StmtVisitor<string> {
@@ -47,6 +52,15 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
 
     public string VisitExprStmt(ExprStmt s) =>
       $"{s.Expression.Accept(_exprVisitor)};";
+
+    public string VisitVarDecl(VarDecl s)
+    {
+        string initializer = "";
+        if (s.Initializer != null) {
+            initializer = $" = {s.Initializer.Accept(_exprVisitor)}";
+        }
+        return $"var {s.Name}{initializer};";
+    }
 
     private ExprVisitor<string> _exprVisitor = new ExprPrettyPrinter();
 }

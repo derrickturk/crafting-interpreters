@@ -148,6 +148,11 @@ public class Interpreter {
                   "invalid binary operator"),
             };
         }
+
+        public object? VisitVar(Var e)
+        {
+            return null;
+        }
     }
 
     private class StmtExecutor: StmtVisitor<ValueTuple> {
@@ -165,6 +170,11 @@ public class Interpreter {
         public ValueTuple VisitExprStmt(ExprStmt s)
         {
             s.Expression.Accept(_evaluator);
+            return ValueTuple.Create();
+        }
+
+        public ValueTuple VisitVarDecl(VarDecl s)
+        {
             return ValueTuple.Create();
         }
 

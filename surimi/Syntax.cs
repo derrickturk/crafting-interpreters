@@ -42,6 +42,13 @@ public record class BinOpApp
     }
 }
 
+public record class Var (String Name, SrcLoc Location): Expr (Location) {
+    public override T Accept<T>(ExprVisitor<T> visitor)
+    {
+        return visitor.VisitVar(this);
+    }
+}
+
 public abstract record class Stmt (SrcLoc Location) {
     public abstract T Accept<T>(StmtVisitor<T> visitor);
 }
@@ -58,5 +65,13 @@ public record class ExprStmt (Expr Expression, SrcLoc Location)
     public override T Accept<T>(StmtVisitor<T> visitor)
     {
         return visitor.VisitExprStmt(this);
+    }
+}
+
+public record class VarDecl (String Name, Expr? Initializer, SrcLoc Location)
+  : Stmt (Location) {
+    public override T Accept<T>(StmtVisitor<T> visitor)
+    {
+        return visitor.VisitVarDecl(this);
     }
 }
