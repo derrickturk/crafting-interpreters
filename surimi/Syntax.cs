@@ -12,7 +12,7 @@ public enum BinOp {
     // And, Or, // for later
 }
 
-// could be an interface, but I'm guess we're going to define some methods here
+// could be an interface, but I'd guess we're going to define some methods here
 public abstract record class Expr (SrcLoc Location) {
     public abstract T Accept<T>(ExprVisitor<T> visitor);
 }

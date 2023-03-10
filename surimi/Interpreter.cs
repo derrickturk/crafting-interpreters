@@ -7,6 +7,8 @@ public class Interpreter {
     public Interpreter(ErrorReporter onError)
     {
         _onError = onError;
+        _evaluator = new ExprEvaluator();
+        _executor = new StmtExecutor(_evaluator);
     }
 
     public void run(string code, string filename)
@@ -15,26 +17,29 @@ public class Interpreter {
         if (_onError.HadError)
             return;
 
-        /*
-        object? v = EvaluateExpression(expr!);
-        if (_onError.HadError)
-            return;
+        // null iff HadError, so ! is safe
+        ExecuteStatements(prog!);
+    }
 
-        Console.WriteLine(ValueString(v));
-        */
+    private void ExecuteStatements(List<Stmt> prog)
+    {
+        try {
+            foreach (var stmt in prog)
+                stmt.Accept(_executor);
+        } catch (TypeError e) {
+            _onError.Error(e.Location, e.Payload);
+        }
     }
 
     private object? EvaluateExpression(Expr expr)
     {
         try {
-            return expr.Accept(new ExprEvaluator());
+            return expr.Accept(_evaluator);
         } catch (TypeError e) {
             _onError.Error(e.Location, e.Payload);
             return null;
         }
     }
-
-    private ErrorReporter _onError;
 
     private static bool ValueTruthy(object? val) => val switch
     {
@@ -134,4 +139,29 @@ public class Interpreter {
             };
         }
     }
+
+    private class StmtExecutor: StmtVisitor<ValueTuple> {
+        public StmtExecutor(ExprEvaluator evaluator)
+        {
+            _evaluator = evaluator;
+        }
+
+        public ValueTuple VisitPrint(Print s)
+        {
+            Console.WriteLine(ValueString(s.Expression.Accept(_evaluator)));
+            return ValueTuple.Create();
+        }
+
+        public ValueTuple VisitExprStmt(ExprStmt s)
+        {
+            s.Expression.Accept(_evaluator);
+            return ValueTuple.Create();
+        }
+
+        private ExprEvaluator _evaluator;
+    }
+
+    private ErrorReporter _onError;
+    private ExprEvaluator _evaluator;
+    private StmtExecutor _executor;
 }
