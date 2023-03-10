@@ -57,6 +57,16 @@ public class Interpreter {
         true => "true",
         false => "false",
         double d => d.ToString(),
+        string s => s,
+        _ => throw new InvalidOperationException("invalid runtime value"),
+    };
+
+    private static string ValueLiteral(object? val) => val switch
+    {
+        null => "nil",
+        true => "true",
+        false => "false",
+        double d => d.ToString(),
         string s => $"\"{s}\"",
         _ => throw new InvalidOperationException("invalid runtime value"),
     };
