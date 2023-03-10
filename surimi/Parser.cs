@@ -14,14 +14,38 @@ public class Parser {
     {
         var p = new Parser(tokens, onError);
         var prog = new List<Stmt>();
+        bool failed = false;
+        while (!p.AtEOF()) {
+            try {
+                prog.Add(p.Declaration());
+            } catch (ParseError) {
+                failed = true;
+                p.Recover();
+            }
+        }
+
         try {
-            while (!p.AtEOF())
-                prog.Add(p.Statement());
             p.RequireEOF();
         } catch (ParseError) {
-            return null;
+            failed = true;
         }
-        return prog;
+
+        return failed ? null : prog;
+    }
+
+    private Stmt Declaration()
+    {
+        if (Match(TokenType.Var) != null) {
+            var name = Require("expected identifier", TokenType.Ident);
+            Expr? initializer = null;
+            if (Match(TokenType.Eq) != null) {
+                initializer = Expression();
+            }
+            Require("expected ';'", TokenType.Semicolon);
+            return new VarDecl(name.Lexeme, initializer, name.Location);
+        }
+
+        return Statement();
     }
 
     private Stmt Statement()
