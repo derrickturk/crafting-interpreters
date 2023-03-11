@@ -68,7 +68,7 @@ public record class ExprStmt (Expr Expression, SrcLoc Location)
     }
 }
 
-public record class VarDecl (String Name, Expr? Initializer, SrcLoc Location)
+public record class VarDecl (Var Variable, Expr? Initializer, SrcLoc Location)
   : Stmt (Location) {
     public override T Accept<T>(StmtVisitor<T> visitor)
     {

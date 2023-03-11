@@ -59,7 +59,7 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
         if (s.Initializer != null) {
             initializer = $" = {s.Initializer.Accept(_exprVisitor)}";
         }
-        return $"var {s.Name}{initializer};";
+        return $"var {s.Variable.Name}{initializer};";
     }
 
     private ExprVisitor<string> _exprVisitor = new ExprPrettyPrinter();

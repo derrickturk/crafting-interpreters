@@ -12,7 +12,7 @@ static class App {
             case 1:
                 return RunFile(args[0]);
             default:
-                var prog = Environment.GetCommandLineArgs()[0];
+                var prog = System.Environment.GetCommandLineArgs()[0];
                 Console.Error.WriteLine($"Usage: {prog} [source-file]");
                 return 2;
         }

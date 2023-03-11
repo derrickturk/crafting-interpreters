@@ -35,14 +35,16 @@ public class Parser {
 
     private Stmt Declaration()
     {
-        if (Match(TokenType.Var) != null) {
+        Token? tok;
+        if ((tok = Match(TokenType.Var)) != null) {
             var name = Require("expected identifier", TokenType.Ident);
             Expr? initializer = null;
             if (Match(TokenType.Eq) != null) {
                 initializer = Expression();
             }
             Require("expected ';'", TokenType.Semicolon);
-            return new VarDecl(name.Lexeme, initializer, name.Location);
+            return new VarDecl(
+              new Var(name.Lexeme, name.Location), initializer, tok.Value.Location);
         }
 
         return Statement();
@@ -118,6 +120,9 @@ public class Parser {
 
         if ((tok = Match(TokenType.StrLit, TokenType.NumLit)) != null)
             return new Literal(tok.Value.Literal, tok.Value.Location);
+
+        if ((tok = Match(TokenType.Ident)) != null)
+            return new Var(tok.Value.Lexeme, tok.Value.Location);
 
         if (Match(TokenType.LParen) != null) {
             var e = Expression();
