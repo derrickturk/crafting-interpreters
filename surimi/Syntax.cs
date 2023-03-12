@@ -12,9 +12,9 @@ public enum BinOp {
     // And, Or, // for later
 }
 
-// could be an interface, but I'd guess we're going to define some methods here
 public abstract record class Expr (SrcLoc Location) {
     public abstract T Accept<T>(ExprVisitor<T> visitor);
+    public string PrettyPrint() => Accept(new ExprPrettyPrinter());
 }
 
 public record class Literal (object? Value, SrcLoc Location): Expr (Location) {
@@ -49,8 +49,17 @@ public record class Var (String Name, SrcLoc Location): Expr (Location) {
     }
 }
 
+public record class Assign (Var Variable, Expr Value, SrcLoc Location)
+  : Expr (Location) {
+    public override T Accept<T>(ExprVisitor<T> visitor)
+    {
+        return visitor.VisitAssign(this);
+    }
+}
+
 public abstract record class Stmt (SrcLoc Location) {
     public abstract T Accept<T>(StmtVisitor<T> visitor);
+    public string PrettyPrint() => Accept(new StmtPrettyPrinter());
 }
 
 public record class Print (Expr Expression, SrcLoc Location) : Stmt (Location) {

@@ -44,6 +44,11 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
     {
         return e.Name;
     }
+
+    public string VisitAssign(Assign e)
+    {
+        return $"{e.Variable.Name} = {e.Value.Accept(this)}";
+    }
 }
 
 public class StmtPrettyPrinter: StmtVisitor<string> {

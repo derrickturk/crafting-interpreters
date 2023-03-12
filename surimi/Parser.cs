@@ -67,7 +67,24 @@ public class Parser {
 
     private Expr Expression()
     {
-        return Equality();
+        return Assignment();
+    }
+
+    private Expr Assignment()
+    {
+        var e = Equality();
+
+        Token? eq;
+        if ((eq = Match(TokenType.Eq)) != null) {
+            var val = Assignment();
+            if (e is Var v)
+                return new Assign(v, val, v.Location);
+            _onError.Error(eq.Value.Location, $" at '{eq.Value.Lexeme}'",
+              $"invalid assignment target: {e.PrettyPrint()}");
+            throw new ParseError();
+        }
+
+        return e;
     }
 
     private delegate Expr ExprParser();

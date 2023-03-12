@@ -5,6 +5,7 @@ public interface ExprVisitor<T> {
     public T VisitUnOpApp(UnOpApp e);
     public T VisitBinOpApp(BinOpApp e);
     public T VisitVar(Var e);
+    public T VisitAssign(Assign e);
 }
 
 public interface StmtVisitor<T> {

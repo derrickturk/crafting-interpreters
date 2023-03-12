@@ -149,6 +149,13 @@ public class Interpreter {
             return _env[e];
         }
 
+        public object? VisitAssign(Assign e)
+        {
+            var val = e.Value.Accept(this);
+            _env[e.Variable] = val;
+            return val;
+        }
+
         private Environment _env;
     }
 
