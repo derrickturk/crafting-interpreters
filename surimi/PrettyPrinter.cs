@@ -54,11 +54,39 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
 }
 
 public class StmtPrettyPrinter: StmtVisitor<string> {
-    public string VisitPrint(Print s) =>
-      $"{Indent}print {s.Expression.Accept(_exprVisitor)};";
-
     public string VisitExprStmt(ExprStmt s) =>
       $"{Indent}{s.Expression.Accept(_exprVisitor)};";
+
+    public string VisitIfElse(IfElse s)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append($"{Indent}if ({s.Condition.Accept(_exprVisitor)})\n");
+        _indent += 2;
+        sb.Append(s.If.Accept(this));
+        _indent -= 2;
+        if (s.Else != null) {
+            sb.Append("\n{Indent}else\n");
+            _indent += 2;
+            sb.Append(s.Else.Accept(this));
+            _indent -= 2;
+        }
+        sb.Append("\n");
+        return sb.ToString();
+    }
+
+    public string VisitWhile(While s)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append($"{Indent}if ({s.Condition.Accept(_exprVisitor)})\n");
+        _indent += 2;
+        sb.Append(s.Body.Accept(this));
+        _indent -= 2;
+        sb.Append("\n");
+        return sb.ToString();
+    }
+
+    public string VisitPrint(Print s) =>
+      $"{Indent}print {s.Expression.Accept(_exprVisitor)};";
 
     public string VisitBlock(Block s)
     {

@@ -14,6 +14,7 @@ public class Interpreter {
 
     public void run(string code, string filename)
     {
+        // TODO: try stmt, then expr (for REPL)
         var prog = Parser.Parse(Lexer.Lex(code, filename, _onError), _onError);
         if (_onError.HadError)
             return;
@@ -166,15 +167,31 @@ public class Interpreter {
             _evaluator = evaluator;
         }
 
-        public ValueTuple VisitPrint(Print s)
-        {
-            Console.WriteLine(ValueString(s.Expression.Accept(_evaluator)));
-            return ValueTuple.Create();
-        }
-
         public ValueTuple VisitExprStmt(ExprStmt s)
         {
             s.Expression.Accept(_evaluator);
+            return ValueTuple.Create();
+        }
+
+        public ValueTuple VisitIfElse(IfElse s)
+        {
+            if (ValueTruthy(s.Condition.Accept(_evaluator)))
+                s.If.Accept(this);
+            else if (s.Else != null)
+                s.Else.Accept(this);
+            return ValueTuple.Create();
+        }
+
+        public ValueTuple VisitWhile(While s)
+        {
+            while (ValueTruthy(s.Condition.Accept(_evaluator)))
+                s.Body.Accept(this);
+            return ValueTuple.Create();
+        }
+
+        public ValueTuple VisitPrint(Print s)
+        {
+            Console.WriteLine(ValueString(s.Expression.Accept(_evaluator)));
             return ValueTuple.Create();
         }
 

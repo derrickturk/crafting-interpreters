@@ -36,39 +36,134 @@ public class Parser {
     private Stmt Declaration()
     {
         Token? tok;
-        if ((tok = Match(TokenType.Var)) != null) {
-            var name = Require("expected identifier", TokenType.Ident);
-            Expr? initializer = null;
-            if (Match(TokenType.Eq) != null) {
-                initializer = Expression();
-            }
-            Require("expected ';'", TokenType.Semicolon);
-            return new VarDecl(
-              new Var(name.Lexeme, name.Location), initializer, tok.Value.Location);
-        }
+        if ((tok = Match(TokenType.Var)) != null)
+            return VarDeclRest(tok.Value);
 
         return Statement();
+    }
+
+    private VarDecl VarDeclRest(Token var_)
+    {
+        var name = Require("expected identifier", TokenType.Ident);
+        Expr? initializer = null;
+        if (Match(TokenType.Eq) != null) {
+            initializer = Expression();
+        }
+        Require("expected ';'", TokenType.Semicolon);
+        return new VarDecl(
+          new Var(name.Lexeme, name.Location), initializer, var_.Location);
     }
 
     private Stmt Statement()
     {
         Token? tok;
-        Expr e;
-        if ((tok = Match(TokenType.Print)) != null) {
-            e = Expression();
+        if ((tok = Match(TokenType.If)) != null)
+            return IfElseRest(tok.Value);
+        if ((tok = Match(TokenType.While)) != null)
+            return WhileRest(tok.Value);
+        if ((tok = Match(TokenType.For)) != null)
+            return ForRest(tok.Value);
+        if ((tok = Match(TokenType.Print)) != null)
+            return PrintRest(tok.Value);
+        if ((tok = Match(TokenType.LBrace)) != null)
+            return BlockRest(tok.Value);
+
+        return ExpressionStatement();
+    }
+
+    private IfElse IfElseRest(Token if_)
+    {
+        Require("expected '('", TokenType.LParen);
+        var cond = Expression();
+        Require("expected ')'", TokenType.RParen);
+        Stmt s_if = Statement();
+        Stmt? s_else = null;
+        if (Match(TokenType.Else) != null)
+            s_else = Statement();
+        return new IfElse(cond, s_if, s_else, if_.Location);
+    }
+
+    private While WhileRest(Token while_)
+    {
+        Require("expected '('", TokenType.LParen);
+        var cond = Expression();
+        Require("expected ')'", TokenType.RParen);
+        var body = Statement();
+        return new While(cond, body, while_.Location);
+    }
+
+    private Stmt ForRest(Token for_)
+    {
+        Require("expected '('", TokenType.LParen);
+
+        Token? init_tok = null;
+        Stmt? initializer;
+        if (Match(TokenType.Semicolon) != null)
+            initializer = null;
+        else if ((init_tok = Match(TokenType.Var)) != null)
+            initializer = VarDeclRest(init_tok.Value);
+        else
+            initializer = ExpressionStatement();
+
+        Token? cond_tok = null;
+        Expr? condition;
+        if ((cond_tok = Match(TokenType.Semicolon)) != null) {
+            condition = null;
+        } else {
+            condition = Expression();
             Require("expected ';'", TokenType.Semicolon);
-            return new Print(e, tok.Value.Location);
         }
 
-        if ((tok = Match(TokenType.LBrace)) != null) {
-            var stmts = new List<Stmt>();
-            while (!Check(TokenType.RBrace) && !AtEOF)
-                stmts.Add(Declaration());
-            Require("expected '}'", TokenType.RBrace);
-            return new Block(stmts, tok.Value.Location);
+        Expr? increment;
+        if (Match(TokenType.RParen) != null) {
+            increment = null;
+        } else {
+            increment = Expression();
+            Require("expected ')'", TokenType.RParen);
         }
 
-        e = Expression();
+        var body = Statement();
+
+        if (increment != null)
+            body = new Block(new List<Stmt> {
+                body,
+                new ExprStmt(increment, increment.Location),
+            }, body.Location);
+
+        if (condition == null)
+            // point to the ;
+            condition = new Literal(true, cond_tok!.Value.Location);
+
+        body = new While(condition, body, for_.Location);
+
+        if (initializer != null)
+            return new Block(new List<Stmt> {
+                initializer,
+                body,
+            }, init_tok!.Value.Location);
+
+        return body;
+    }
+
+    private Print PrintRest(Token print)
+    {
+        var e = Expression();
+        Require("expected ';'", TokenType.Semicolon);
+        return new Print(e, print.Location);
+    }
+
+    private Block BlockRest(Token lbrace)
+    {
+        var stmts = new List<Stmt>();
+        while (!Check(TokenType.RBrace) && !AtEOF)
+            stmts.Add(Declaration());
+        Require("expected '}'", TokenType.RBrace);
+        return new Block(stmts, lbrace.Location);
+    }
+
+    private ExprStmt ExpressionStatement()
+    {
+        var e = Expression();
         Require("expected ';'", TokenType.Semicolon);
         return new ExprStmt(e, e.Location);
     }

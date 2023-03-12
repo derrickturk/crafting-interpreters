@@ -62,18 +62,34 @@ public abstract record class Stmt (SrcLoc Location) {
     public string PrettyPrint() => Accept(new StmtPrettyPrinter());
 }
 
-public record class Print (Expr Expression, SrcLoc Location) : Stmt (Location) {
-    public override T Accept<T>(StmtVisitor<T> visitor)
-    {
-        return visitor.VisitPrint(this);
-    }
-}
-
 public record class ExprStmt (Expr Expression, SrcLoc Location)
   : Stmt (Location) {
     public override T Accept<T>(StmtVisitor<T> visitor)
     {
         return visitor.VisitExprStmt(this);
+    }
+}
+
+public record class IfElse (Expr Condition, Stmt If, Stmt? Else,
+  SrcLoc Location) : Stmt (Location) {
+    public override T Accept<T>(StmtVisitor<T> visitor)
+    {
+        return visitor.VisitIfElse(this);
+    }
+}
+
+public record class While (Expr Condition, Stmt Body, SrcLoc Location)
+  : Stmt (Location) {
+    public override T Accept<T>(StmtVisitor<T> visitor)
+    {
+        return visitor.VisitWhile(this);
+    }
+}
+
+public record class Print (Expr Expression, SrcLoc Location) : Stmt (Location) {
+    public override T Accept<T>(StmtVisitor<T> visitor)
+    {
+        return visitor.VisitPrint(this);
     }
 }
 

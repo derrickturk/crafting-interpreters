@@ -9,8 +9,10 @@ public interface ExprVisitor<T> {
 }
 
 public interface StmtVisitor<T> {
-    public T VisitPrint(Print s);
     public T VisitExprStmt(ExprStmt s);
+    public T VisitIfElse(IfElse s);
+    public T VisitWhile(While s);
+    public T VisitPrint(Print s);
     public T VisitBlock(Block s);
     public T VisitVarDecl(VarDecl s);
 }
