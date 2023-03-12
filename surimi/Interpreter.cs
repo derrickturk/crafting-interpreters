@@ -178,23 +178,22 @@ public class Interpreter {
             return ValueTuple.Create();
         }
 
+        public ValueTuple VisitBlock(Block s)
+        {
+            _env.PushScope();
+            try {
+                foreach (var stmt in s.Statements)
+                    stmt.Accept(this);
+            } finally {
+                _env.PopScope();
+            }
+            return ValueTuple.Create();
+        }
+
         public ValueTuple VisitVarDecl(VarDecl s)
         {
             _env.Declare(s.Variable, s.Initializer?.Accept(_evaluator));
             return ValueTuple.Create();
-        }
-
-        private void PushScope()
-        {
-            _env = new Environment(_env);
-        }
-
-        private void PopScope()
-        {
-            if (_env.Parent == null)
-                throw new InvalidOperationException(
-                  "internal error: pop from global scope");
-            _env = _env.Parent;
         }
 
         private Environment _env;
@@ -208,10 +207,35 @@ public class Interpreter {
 }
 
 public class Environment {
-    public Environment(Environment? parent = null)
+    public Environment()
     {
         _locals = new Dictionary<string, object?>();
-        _parent = parent;
+        _parent = null;
+    }
+
+    // clone, for use in push/pop
+    private Environment(Environment other)
+    {
+        _locals = other._locals;
+        _parent = other._parent;
+    }
+
+    // enter a new lexical scope
+    public void PushScope()
+    {
+        var me = new Environment(this);
+        _locals = new Dictionary<string, object?>();
+        _parent = me;
+    }
+
+    // exit a scope
+    public void PopScope()
+    {
+        if (_parent == null)
+            throw new InvalidOperationException(
+              "internal error: pop from global scope");
+        _locals = _parent._locals;
+        _parent = _parent._parent;
     }
 
     public object? this[Var variable]

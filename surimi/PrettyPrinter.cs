@@ -1,5 +1,7 @@
 namespace Surimi;
 
+using System.Text;
+
 public class ExprPrettyPrinter: ExprVisitor<string> {
     public string VisitLiteral(Literal e) => e.Value switch
     {
@@ -53,10 +55,23 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
 
 public class StmtPrettyPrinter: StmtVisitor<string> {
     public string VisitPrint(Print s) =>
-      $"print {s.Expression.Accept(_exprVisitor)};";
+      $"{Indent}print {s.Expression.Accept(_exprVisitor)};";
 
     public string VisitExprStmt(ExprStmt s) =>
-      $"{s.Expression.Accept(_exprVisitor)};";
+      $"{Indent}{s.Expression.Accept(_exprVisitor)};";
+
+    public string VisitBlock(Block s)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append($"{Indent}{{\n");
+        _indent += 2;
+        foreach (var stmt in s.Statements) {
+            sb.Append($"{stmt.Accept(this)}\n");
+        }
+        _indent -= 2;
+        sb.Append($"{Indent}}}");
+        return sb.ToString();
+    }
 
     public string VisitVarDecl(VarDecl s)
     {
@@ -64,8 +79,11 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
         if (s.Initializer != null) {
             initializer = $" = {s.Initializer.Accept(_exprVisitor)}";
         }
-        return $"var {s.Variable.Name}{initializer};";
+        return $"{Indent}var {s.Variable.Name}{initializer};";
     }
 
+    private string Indent => new string(' ', _indent);
+
     private ExprVisitor<string> _exprVisitor = new ExprPrettyPrinter();
+    private int _indent = 0;
 }

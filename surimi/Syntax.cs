@@ -77,6 +77,14 @@ public record class ExprStmt (Expr Expression, SrcLoc Location)
     }
 }
 
+public record class Block (List<Stmt> Statements, SrcLoc Location)
+  : Stmt (Location) {
+    public override T Accept<T>(StmtVisitor<T> visitor)
+    {
+        return visitor.VisitBlock(this);
+    }
+}
+
 public record class VarDecl (Var Variable, Expr? Initializer, SrcLoc Location)
   : Stmt (Location) {
     public override T Accept<T>(StmtVisitor<T> visitor)

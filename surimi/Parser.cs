@@ -15,7 +15,7 @@ public class Parser {
         var p = new Parser(tokens, onError);
         var prog = new List<Stmt>();
         bool failed = false;
-        while (!p.AtEOF()) {
+        while (!p.AtEOF) {
             try {
                 prog.Add(p.Declaration());
             } catch (ParseError) {
@@ -58,6 +58,14 @@ public class Parser {
             e = Expression();
             Require("expected ';'", TokenType.Semicolon);
             return new Print(e, tok.Value.Location);
+        }
+
+        if ((tok = Match(TokenType.LBrace)) != null) {
+            var stmts = new List<Stmt>();
+            while (!Check(TokenType.RBrace) && !AtEOF)
+                stmts.Add(Declaration());
+            Require("expected '}'", TokenType.RBrace);
+            return new Block(stmts, tok.Value.Location);
         }
 
         e = Expression();
@@ -184,11 +192,11 @@ public class Parser {
         throw new ParseError();
     }
 
-    private bool AtEOF() => _tokens.Next == null;
+    private bool AtEOF => _tokens.Next == null;
 
     private void RequireEOF()
     {
-        if (!AtEOF()) {
+        if (!AtEOF) {
             _onError.Error(_tokens.Next!.Value.Location,
               $" at \"{_tokens.Next!.Value.Lexeme}\"",
               "expected end of input");
