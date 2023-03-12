@@ -184,6 +184,19 @@ public class Interpreter {
             return ValueTuple.Create();
         }
 
+        private void PushScope()
+        {
+            _env = new Environment(_env);
+        }
+
+        private void PopScope()
+        {
+            if (_env.Parent == null)
+                throw new InvalidOperationException(
+                  "internal error: pop from global scope");
+            _env = _env.Parent;
+        }
+
         private Environment _env;
         private ExprEvaluator _evaluator;
     }
@@ -195,25 +208,30 @@ public class Interpreter {
 }
 
 public class Environment {
-    public Environment()
+    public Environment(Environment? parent = null)
     {
-        _globals = new Dictionary<string, object?>();
+        _locals = new Dictionary<string, object?>();
+        _parent = parent;
     }
 
     public object? this[Var variable]
     {
         get
         {
-            if (_globals.ContainsKey(variable.Name))
-                return _globals[variable.Name];
+            if (_locals.ContainsKey(variable.Name))
+                return _locals[variable.Name];
+            if (_parent != null)
+                return _parent[variable];
             throw new RuntimeError(variable.Location,
               $"undefined variable {variable.Name}");
         }
 
         set
         {
-            if (_globals.ContainsKey(variable.Name))
-                _globals[variable.Name] = value;
+            if (_locals.ContainsKey(variable.Name))
+                _locals[variable.Name] = value;
+            else if (_parent != null)
+                _parent[variable] = value;
             else
                 throw new RuntimeError(variable.Location,
                   $"undefined variable {variable.Name}");
@@ -222,10 +240,13 @@ public class Environment {
 
     public void Declare(Var variable, object? initializer)
     {
-        _globals[variable.Name] = initializer;
+        _locals[variable.Name] = initializer;
     }
 
-    private Dictionary<string, object?> _globals;
+    public Environment? Parent => _parent;
+
+    private Dictionary<string, object?> _locals;
+    private Environment? _parent;
 }
 
 internal class RuntimeError: Exception {
