@@ -180,8 +180,7 @@ public class Interpreter {
 
         public ValueTuple VisitVarDecl(VarDecl s)
         {
-            _env[s.Variable] =
-              s.Initializer == null ? null : s.Initializer.Accept(_evaluator);
+            _env.Declare(s.Variable, s.Initializer?.Accept(_evaluator));
             return ValueTuple.Create();
         }
 
@@ -211,7 +210,19 @@ public class Environment {
               $"undefined variable {variable.Name}");
         }
 
-        set { _globals[variable.Name] = value; }
+        set
+        {
+            if (_globals.ContainsKey(variable.Name))
+                _globals[variable.Name] = value;
+            else
+                throw new RuntimeError(variable.Location,
+                  $"undefined variable {variable.Name}");
+        }
+    }
+
+    public void Declare(Var variable, object? initializer)
+    {
+        _globals[variable.Name] = initializer;
     }
 
     private Dictionary<string, object?> _globals;
