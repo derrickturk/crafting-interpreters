@@ -84,9 +84,26 @@ public class Interpreter {
         public object VisitUnOpApp(UnOpApp e) =>
             !ValueTruthy(e.Operand.Accept(this));
 
-        public object VisitBinOpApp(BinOpApp e)
+        public object? VisitBinOpApp(BinOpApp e)
         {
-            // TODO: lazy cases check here
+            {
+                object? lhs;
+                // check lazy cases first
+                switch (e.Operator) {
+                    case BinOp.And:
+                        lhs = e.Lhs.Accept(this);
+                        if (!ValueTruthy(lhs))
+                            return lhs;
+                        return e.Rhs.Accept(this);
+                    case BinOp.Or:
+                        lhs = e.Lhs.Accept(this);
+                        if (ValueTruthy(lhs))
+                            return lhs;
+                        return e.Rhs.Accept(this);
+                    default:
+                        break;
+                }
+            }
 
             return (e.Operator, e.Lhs.Accept(this), e.Rhs.Accept(this)) switch
             {

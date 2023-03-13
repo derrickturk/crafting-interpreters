@@ -36,6 +36,8 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
             BinOp.GtEq => ">=",
             BinOp.Lt => "<",
             BinOp.LtEq => "<=",
+            BinOp.And => "and",
+            BinOp.Or => "or",
             var o => throw new ArgumentException(
               $"invalid binary operator: {o}"),
         };

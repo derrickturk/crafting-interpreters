@@ -9,7 +9,7 @@ public enum BinOp {
     // Comma, Member, // for later
     Minus, Plus, DividedBy, Times,
     NotEq, EqEq, Gt, GtEq, Lt, LtEq,
-    // And, Or, // for later
+    And, Or,
 }
 
 public abstract record class Expr (SrcLoc Location) {

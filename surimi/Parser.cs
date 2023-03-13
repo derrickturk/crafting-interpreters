@@ -175,7 +175,7 @@ public class Parser {
 
     private Expr Assignment()
     {
-        var e = Equality();
+        var e = LogicOr();
 
         Token? eq;
         if ((eq = Match(TokenType.Eq)) != null) {
@@ -203,6 +203,10 @@ public class Parser {
         }
         return lhs;
     }
+
+    private Expr LogicOr() => BinOpFold(LogicAnd, TokenType.Or);
+
+    private Expr LogicAnd() => BinOpFold(Equality, TokenType.And);
 
     private Expr Equality() => BinOpFold(Comparison,
       TokenType.NotEq, TokenType.EqEq);
@@ -250,7 +254,6 @@ public class Parser {
             return e;
         }
 
-        // TODO: recover instead
         Require("expected an expression");
         // unreachable
         throw new InvalidOperationException(
@@ -348,6 +351,8 @@ public class Parser {
         TokenType.GtEq => BinOp.GtEq,
         TokenType.Lt => BinOp.Lt,
         TokenType.LtEq => BinOp.LtEq,
+        TokenType.Or => BinOp.Or,
+        TokenType.And => BinOp.And,
         _ => throw new ArgumentException($"Invalid binary operator {t}"),
     };
 
