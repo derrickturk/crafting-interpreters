@@ -16,4 +16,5 @@ public interface StmtVisitor<T> {
     public T VisitPrint(Print s);
     public T VisitBlock(Block s);
     public T VisitVarDecl(VarDecl s);
+    public T VisitFunDef(FunDef s);
 }

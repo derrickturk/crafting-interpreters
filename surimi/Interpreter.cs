@@ -250,6 +250,16 @@ public class Interpreter {
             return ValueTuple.Create();
         }
 
+        public ValueTuple VisitFunDef(FunDef s)
+        {
+            /* TODO: some gnarly environment management
+             * rough plan: create a LoxFunction : Callable class which bundles
+             * a FunDef with an Environment...
+             */
+            _env.Declare(s.Name, null);
+            return ValueTuple.Create();
+        }
+
         private Environment _env;
         private ExprEvaluator _evaluator;
     }

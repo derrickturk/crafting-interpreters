@@ -116,3 +116,11 @@ public record class VarDecl (Var Variable, Expr? Initializer, SrcLoc Location)
         return visitor.VisitVarDecl(this);
     }
 }
+
+public record class FunDef (Var Name, List<Var> Parameters, List<Stmt> Body,
+  SrcLoc Location) : Stmt (Location) {
+    public override T Accept<T>(StmtVisitor<T> visitor)
+    {
+        return visitor.VisitFunDef(this);
+    }
+}

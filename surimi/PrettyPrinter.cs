@@ -102,9 +102,8 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
         StringBuilder sb = new StringBuilder();
         sb.Append($"{Indent}{{\n");
         _indent += 2;
-        foreach (var stmt in s.Statements) {
+        foreach (var stmt in s.Statements)
             sb.Append($"{stmt.Accept(this)}\n");
-        }
         _indent -= 2;
         sb.Append($"{Indent}}}");
         return sb.ToString();
@@ -117,6 +116,24 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
             initializer = $" = {s.Initializer.Accept(_exprVisitor)}";
         }
         return $"{Indent}var {s.Variable.Name}{initializer};";
+    }
+
+    public string VisitFunDef(FunDef s)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append($"{Indent}fun {s.Name.Name} (");
+        string sep = "";
+        foreach (var p in s.Parameters) {
+            sb.Append($"{sep}{p.Name}");
+            sep = ", ";
+        }
+        sb.Append(") {\n");
+        _indent += 2;
+        foreach (var stmt in s.Body)
+            sb.Append($"{stmt.Accept(this)}\n");
+        _indent -= 2;
+        sb.Append("}");
+        return sb.ToString();
     }
 
     private string Indent => new string(' ', _indent);

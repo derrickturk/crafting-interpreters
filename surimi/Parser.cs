@@ -38,6 +38,8 @@ public class Parser {
         Token? tok;
         if ((tok = Match(TokenType.Var)) != null)
             return VarDeclRest(tok.Value);
+        if ((tok = Match(TokenType.Fun)) != null)
+            return FunDefOrMethodRest(tok.Value);
 
         return Statement();
     }
@@ -52,6 +54,38 @@ public class Parser {
         Require("expected ';'", TokenType.Semicolon);
         return new VarDecl(
           new Var(name.Lexeme, name.Location), initializer, var_.Location);
+    }
+
+    private Stmt FunDefOrMethodRest(Token tok)
+    {
+        var kind = tok.Type switch {
+            TokenType.Fun => "function",
+            _ => throw new InvalidOperationException(
+              "internal error: bad token type for fun/method rest"),
+        };
+
+        Token name = Require($"expected {kind} name", TokenType.Ident);
+        Require($"expected '(' after {kind} name", TokenType.LParen);
+
+        List<Var> parameters = new List<Var>();
+        if (!Check(TokenType.RParen)) {
+            do {
+                var ident = Require("expected parameter name", TokenType.Ident);
+                parameters.Add(new Var(ident.Lexeme, ident.Location));
+            } while (Match(TokenType.Comma) != null);
+        }
+
+        var rparen = Require("expected ')'", TokenType.RParen);
+        if (parameters.Count > 255)
+            _onError.Error(rparen.Location, $" at {rparen.Lexeme}",
+              "more than 255 arguments");
+
+        var lbrace = Require($"expected '{{' before {kind} body",
+          TokenType.LBrace);
+        var body = BlockRest(lbrace);
+
+        return new FunDef(new Var(name.Lexeme, name.Location),
+          parameters, body.Statements, tok.Location);
     }
 
     private Stmt Statement()
