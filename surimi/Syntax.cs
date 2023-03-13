@@ -57,6 +57,14 @@ public record class Assign (Var Variable, Expr Value, SrcLoc Location)
     }
 }
 
+public record class Call (Expr Callee, List<Expr> Arguments, SrcLoc Location)
+  : Expr (Location) {
+    public override T Accept<T>(ExprVisitor<T> visitor)
+    {
+        return visitor.VisitCall(this);
+    }
+}
+
 public abstract record class Stmt (SrcLoc Location) {
     public abstract T Accept<T>(StmtVisitor<T> visitor);
     public string PrettyPrint() => Accept(new StmtPrettyPrinter());

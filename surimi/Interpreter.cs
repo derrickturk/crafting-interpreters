@@ -1,7 +1,6 @@
 namespace Surimi;
 
 using System;
-using System.Linq;
 
 public class Interpreter {
     public Interpreter(ErrorReporter onError)
@@ -172,6 +171,15 @@ public class Interpreter {
             var val = e.Value.Accept(this);
             _env[e.Variable] = val;
             return val;
+        }
+
+        public object? VisitCall(Call e)
+        {
+            var fn = e.Callee.Accept(this);
+            // TODO: tyck
+            var args = e.Arguments.Select(a => a.Accept(this)).ToList();
+            // TODO: arityck
+            return null; // TODO: ROTFO
         }
 
         private Environment _env;

@@ -1,6 +1,7 @@
 namespace Surimi;
 
 using System.Text;
+using System.Linq;
 
 public class ExprPrettyPrinter: ExprVisitor<string> {
     public string VisitLiteral(Literal e) => e.Value switch
@@ -52,6 +53,12 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
     public string VisitAssign(Assign e)
     {
         return $"{e.Variable.Name} = {e.Value.Accept(this)}";
+    }
+
+    public string VisitCall(Call e)
+    {
+        var args = String.Join(", ", e.Arguments.Select(a => a.Accept(this)));
+        return $"{e.Callee.Accept(this)}({args})";
     }
 }
 

@@ -226,7 +226,41 @@ public class Parser {
             return new UnOpApp(TokenUnOp(op_tok.Value), rhs,
               op_tok.Value.Location);
         }
-        return Primary();
+        return Call();
+    }
+
+    private Expr Call()
+    {
+        var e = Primary();
+        Token? tok;
+        while ((tok = Match(TokenType.LParen /*, ... */)) != null) {
+            switch (tok.Value.Type) {
+                case TokenType.LParen:
+                    e = CallRest(e, tok.Value);
+                    break;
+                /* ... */
+                default:
+                    throw new InvalidOperationException(
+                      "internal error: impossible result from Match");
+            }
+        }
+        return e;
+    }
+
+    private Expr CallRest(Expr callee, Token lparen)
+    {
+        List<Expr> args = new List<Expr>();
+        if (!Check(TokenType.RParen))
+            do
+                args.Add(Expression());
+            while (Match(TokenType.Comma) != null);
+        Require("expected ')'", TokenType.RParen);
+        /* TODO: which Location?
+         *   book sez rparen (low energy)
+         *   callee.Location is sensible choice
+         *   I choose lparen (that's where the call "begins" IMO
+         */
+        return new Call(callee, args, lparen.Location);
     }
 
     private Expr Primary()
