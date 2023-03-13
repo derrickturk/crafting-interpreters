@@ -31,7 +31,7 @@ static class App {
             return 1;
         }
 
-        interp.run(src, path);
+        interp.Run(src, path);
 
         return onError.HadError ? 1 : 0;
     }
@@ -47,7 +47,7 @@ static class App {
             string? line = Console.ReadLine();
             if (line == null)
                 break;
-            interp.run(line, "<stdin>");
+            interp.Run(line, "<stdin>");
             // I really hate this error handling scheme
             onError.HadError = false;
         }

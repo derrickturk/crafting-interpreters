@@ -1,0 +1,6 @@
+var then = clock();
+for (var i = 0; i < 100; i = i + 1) {
+    var now = clock();
+    print "elapsed: " + to_string((now - then) * 1000) + " ns";
+    then = now;
+}

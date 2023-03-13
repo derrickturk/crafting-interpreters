@@ -254,8 +254,17 @@ public class Parser {
             do
                 args.Add(Expression());
             while (Match(TokenType.Comma) != null);
-        Require("expected ')'", TokenType.RParen);
-        /* TODO: which Location?
+
+        var rparen = Require("expected ')'", TokenType.RParen);
+
+        /* TODO: revisit this whole idea - do we need it?
+         * isn't the VM a stack machine?
+         */
+        if (args.Count > 255)
+            _onError.Error(rparen.Location, $" at {rparen.Lexeme}",
+              "more than 255 arguments");
+
+        /* which Location?
          *   book sez rparen (low energy)
          *   callee.Location is sensible choice
          *   I choose lparen (that's where the call "begins" IMO

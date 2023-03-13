@@ -7,13 +7,13 @@ public class Interpreter {
     {
         _onError = onError;
         _env = new Environment();
+        RegisterBuiltins();
         _evaluator = new ExprEvaluator(_env);
         _executor = new StmtExecutor(_env, _evaluator);
     }
 
-    public void run(string code, string filename)
+    public void Run(string code, string filename)
     {
-        // TODO: try stmt, then expr (for REPL)
         var prog = Parser.Parse(Lexer.Lex(code, filename, _onError), _onError);
         if (_onError.HadError)
             return;
@@ -21,6 +21,36 @@ public class Interpreter {
         // null iff HadError, so ! is safe
         ExecuteStatements(prog!);
     }
+
+    internal static bool ValueTruthy(object? val) => val switch
+    {
+        null => false,
+        false => false,
+        _ => true,
+    };
+
+    internal static bool ValueEquals(object? lhs, object? rhs) =>
+        lhs == null ? rhs == null : lhs.Equals(rhs);
+
+    internal static string ValueString(object? val) => val switch
+    {
+        null => "nil",
+        true => "true",
+        false => "false",
+        double d => d.ToString(),
+        string s => s,
+        _ => throw new InvalidOperationException("invalid runtime value"),
+    };
+
+    internal static string ValueLiteral(object? val) => val switch
+    {
+        null => "nil",
+        true => "true",
+        false => "false",
+        double d => d.ToString(),
+        string s => $"\"{s}\"",
+        _ => throw new InvalidOperationException("invalid runtime value"),
+    };
 
     private void ExecuteStatements(List<Stmt> prog)
     {
@@ -42,35 +72,12 @@ public class Interpreter {
         }
     }
 
-    private static bool ValueTruthy(object? val) => val switch
+    private void RegisterBuiltins()
     {
-        null => false,
-        false => false,
-        _ => true,
-    };
-
-    private static bool ValueEquals(object? lhs, object? rhs) =>
-        lhs == null ? rhs == null : lhs.Equals(rhs);
-
-    private static string ValueString(object? val) => val switch
-    {
-        null => "nil",
-        true => "true",
-        false => "false",
-        double d => d.ToString(),
-        string s => s,
-        _ => throw new InvalidOperationException("invalid runtime value"),
-    };
-
-    private static string ValueLiteral(object? val) => val switch
-    {
-        null => "nil",
-        true => "true",
-        false => "false",
-        double d => d.ToString(),
-        string s => $"\"{s}\"",
-        _ => throw new InvalidOperationException("invalid runtime value"),
-    };
+        foreach (var builtin in Builtin.BuiltinFunctions)
+            _env.Declare(new Var(builtin.Name, Builtin.BuiltinLocation),
+              builtin);
+    }
 
     private class ExprEvaluator: ExprVisitor<object?> {
         public ExprEvaluator(Environment env)
@@ -175,11 +182,16 @@ public class Interpreter {
 
         public object? VisitCall(Call e)
         {
-            var fn = e.Callee.Accept(this);
-            // TODO: tyck
-            var args = e.Arguments.Select(a => a.Accept(this)).ToList();
-            // TODO: arityck
-            return null; // TODO: ROTFO
+            if (e.Callee.Accept(this) is Callable fn) {
+                var args = e.Arguments.Select(a => a.Accept(this)).ToList();
+                if (args.Count != fn.Arity)
+                    throw new RuntimeError(e.Location,
+                      $"expected {fn.Arity} arguments but got {args.Count}");
+                return fn.Call(args);
+            } else {
+                throw new RuntimeError(
+                  e.Callee.Location, "call on non-callable value");
+            }
         }
 
         private Environment _env;
@@ -313,6 +325,11 @@ public class Environment {
 
     private Dictionary<string, object?> _locals;
     private Environment? _parent;
+}
+
+public interface Callable {
+    public int Arity { get; }
+    public object? Call(List<object?> arguments);
 }
 
 internal class RuntimeError: Exception {
