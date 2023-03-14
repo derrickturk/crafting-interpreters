@@ -8,8 +8,7 @@ public class Interpreter {
         _onError = onError;
         _env = new Environment();
         RegisterBuiltins();
-        _evaluator = new ExprEvaluator(_env);
-        _executor = new StmtExecutor(_env, _evaluator);
+        _visitor = new EvalExecVistitor(_env);
     }
 
     public void Run(string code, string filename)
@@ -56,7 +55,7 @@ public class Interpreter {
     {
         try {
             foreach (var stmt in prog)
-                stmt.Accept(_executor);
+                stmt.Accept(_visitor);
         } catch (RuntimeError e) {
             _onError.Error(e.Location, e.Payload);
         }
@@ -65,7 +64,7 @@ public class Interpreter {
     private object? EvaluateExpression(Expr expr)
     {
         try {
-            return expr.Accept(_evaluator);
+            return expr.Accept(_visitor);
         } catch (RuntimeError e) {
             _onError.Error(e.Location, e.Payload);
             return null;
@@ -79,8 +78,9 @@ public class Interpreter {
               builtin);
     }
 
-    private class ExprEvaluator: ExprVisitor<object?> {
-        public ExprEvaluator(Environment env)
+    private class EvalExecVistitor
+      : ExprVisitor<object?>, StmtVisitor<ValueTuple> {
+        public EvalExecVistitor(Environment env)
         {
             _env = env;
         }
@@ -194,25 +194,15 @@ public class Interpreter {
             }
         }
 
-        private Environment _env;
-    }
-
-    private class StmtExecutor: StmtVisitor<ValueTuple> {
-        public StmtExecutor(Environment env, ExprEvaluator evaluator)
-        {
-            _env = env;
-            _evaluator = evaluator;
-        }
-
         public ValueTuple VisitExprStmt(ExprStmt s)
         {
-            s.Expression.Accept(_evaluator);
+            s.Expression.Accept(this);
             return ValueTuple.Create();
         }
 
         public ValueTuple VisitIfElse(IfElse s)
         {
-            if (ValueTruthy(s.Condition.Accept(_evaluator)))
+            if (ValueTruthy(s.Condition.Accept(this)))
                 s.If.Accept(this);
             else if (s.Else != null)
                 s.Else.Accept(this);
@@ -221,32 +211,28 @@ public class Interpreter {
 
         public ValueTuple VisitWhile(While s)
         {
-            while (ValueTruthy(s.Condition.Accept(_evaluator)))
+            while (ValueTruthy(s.Condition.Accept(this)))
                 s.Body.Accept(this);
             return ValueTuple.Create();
         }
 
         public ValueTuple VisitPrint(Print s)
         {
-            Console.WriteLine(ValueString(s.Expression.Accept(_evaluator)));
+            Console.WriteLine(ValueString(s.Expression.Accept(this)));
             return ValueTuple.Create();
         }
 
         public ValueTuple VisitBlock(Block s)
         {
-            _env.PushScope();
-            try {
-                foreach (var stmt in s.Statements)
-                    stmt.Accept(this);
-            } finally {
-                _env.PopScope();
-            }
+            var innerVisitor = new EvalExecVistitor(new Environment(_env));
+            foreach (var stmt in s.Statements)
+                stmt.Accept(innerVisitor);
             return ValueTuple.Create();
         }
 
         public ValueTuple VisitVarDecl(VarDecl s)
         {
-            _env.Declare(s.Variable, s.Initializer?.Accept(_evaluator));
+            _env.Declare(s.Variable, s.Initializer?.Accept(this));
             return ValueTuple.Create();
         }
 
@@ -261,45 +247,18 @@ public class Interpreter {
         }
 
         private Environment _env;
-        private ExprEvaluator _evaluator;
     }
 
     private ErrorReporter _onError;
     private Environment _env;
-    private ExprEvaluator _evaluator;
-    private StmtExecutor _executor;
+    private EvalExecVistitor _visitor;
 }
 
 public class Environment {
-    public Environment()
+    public Environment(Environment? parent = null)
     {
         _locals = new Dictionary<string, object?>();
-        _parent = null;
-    }
-
-    // clone, for use in push/pop
-    private Environment(Environment other)
-    {
-        _locals = other._locals;
-        _parent = other._parent;
-    }
-
-    // enter a new lexical scope
-    public void PushScope()
-    {
-        var me = new Environment(this);
-        _locals = new Dictionary<string, object?>();
-        _parent = me;
-    }
-
-    // exit a scope
-    public void PopScope()
-    {
-        if (_parent == null)
-            throw new InvalidOperationException(
-              "internal error: pop from global scope");
-        _locals = _parent._locals;
-        _parent = _parent._parent;
+        _parent = parent;
     }
 
     public object? this[Var variable]

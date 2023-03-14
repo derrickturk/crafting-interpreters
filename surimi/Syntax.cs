@@ -79,7 +79,7 @@ public record class ExprStmt (Expr Expression, SrcLoc Location)
 }
 
 public record class IfElse (Expr Condition, Stmt If, Stmt? Else,
-  SrcLoc Location) : Stmt (Location) {
+  SrcLoc Location): Stmt (Location) {
     public override T Accept<T>(StmtVisitor<T> visitor)
     {
         return visitor.VisitIfElse(this);
@@ -94,7 +94,7 @@ public record class While (Expr Condition, Stmt Body, SrcLoc Location)
     }
 }
 
-public record class Print (Expr Expression, SrcLoc Location) : Stmt (Location) {
+public record class Print (Expr Expression, SrcLoc Location): Stmt (Location) {
     public override T Accept<T>(StmtVisitor<T> visitor)
     {
         return visitor.VisitPrint(this);
@@ -118,7 +118,7 @@ public record class VarDecl (Var Variable, Expr? Initializer, SrcLoc Location)
 }
 
 public record class FunDef (Var Name, List<Var> Parameters, List<Stmt> Body,
-  SrcLoc Location) : Stmt (Location) {
+  SrcLoc Location): Stmt (Location) {
     public override T Accept<T>(StmtVisitor<T> visitor)
     {
         return visitor.VisitFunDef(this);
