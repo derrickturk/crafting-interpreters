@@ -8,7 +8,7 @@ public class Interpreter {
         _onError = onError;
         _env = new Environment();
         RegisterBuiltins();
-        _visitor = new EvalExecVistitor(_env);
+        _visitor = new EvalExecVisitor(_env);
     }
 
     public void Run(string code, string filename)
@@ -78,9 +78,9 @@ public class Interpreter {
               builtin);
     }
 
-    private class EvalExecVistitor
+    private class EvalExecVisitor
       : ExprVisitor<object?>, StmtVisitor<ValueTuple> {
-        public EvalExecVistitor(Environment env)
+        public EvalExecVisitor(Environment env)
         {
             _env = env;
         }
@@ -224,7 +224,7 @@ public class Interpreter {
 
         public ValueTuple VisitBlock(Block s)
         {
-            var innerVisitor = new EvalExecVistitor(new Environment(_env));
+            var innerVisitor = new EvalExecVisitor(new Environment(_env));
             foreach (var stmt in s.Statements)
                 stmt.Accept(innerVisitor);
             return ValueTuple.Create();
@@ -238,20 +238,34 @@ public class Interpreter {
 
         public ValueTuple VisitFunDef(FunDef s)
         {
-            /* TODO: some gnarly environment management
-             * rough plan: create a LoxFunction : Callable class which bundles
-             * a FunDef with an Environment...
-             */
-            _env.Declare(s.Name, null);
+            _env.Declare(s.Name, new LoxFunction(s, _env));
             return ValueTuple.Create();
         }
 
         private Environment _env;
     }
 
+    private record class LoxFunction(FunDef Definition, Environment Env)
+      : Callable {
+        public int Arity => Definition.Parameters.Count;
+
+        public object? Call(List<object?> arguments)
+        {
+            var frameEnv = new Environment(Env);
+            var frameVisitor = new EvalExecVisitor(frameEnv);
+            foreach (var (param, arg) in Definition.Parameters.Zip(arguments))
+                frameEnv.Declare(param, arg);
+            foreach (var s in Definition.Body)
+                s.Accept(frameVisitor);
+            return null; // TODO
+        }
+
+        public override string ToString() => $"<function {Definition.Name.Name}>";
+    }
+
     private ErrorReporter _onError;
     private Environment _env;
-    private EvalExecVistitor _visitor;
+    private EvalExecVisitor _visitor;
 }
 
 public class Environment {

@@ -2,7 +2,8 @@ namespace Surimi;
 
 internal record class Builtin(string Name, int Arity,
   Func<List<object?>, object?> Function): Callable {
-    public object? Call(List<object?> arguments) => Function(arguments);
+    public object? Call(List<object?> arguments) =>
+      Function(arguments);
     public override string ToString() => $"<built-in function {Name}>";
 
     public static readonly SrcLoc BuiltinLocation = new SrcLoc(
