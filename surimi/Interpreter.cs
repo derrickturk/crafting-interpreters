@@ -266,7 +266,7 @@ public class Interpreter {
             } catch (ReturnOrError r) {
                 return r.Result;
             }
-            return null; // TODO
+            return null;
         }
 
         public override string ToString() => $"<function {Definition.Name.Name}>";
