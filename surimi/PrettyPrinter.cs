@@ -97,6 +97,9 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
     public string VisitPrint(Print s) =>
       $"{Indent}print {s.Expression.Accept(_exprVisitor)};";
 
+    public string VisitReturn(Return s) =>
+      $"{Indent}return {s.Expression.Accept(_exprVisitor)};";
+
     public string VisitBlock(Block s)
     {
         StringBuilder sb = new StringBuilder();

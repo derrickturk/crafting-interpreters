@@ -222,6 +222,11 @@ public class Interpreter {
             return ValueTuple.Create();
         }
 
+        public ValueTuple VisitReturn(Return s)
+        {
+            throw new ReturnOrError(s.Expression.Accept(this), s.Location);
+        }
+
         public ValueTuple VisitBlock(Block s)
         {
             var innerVisitor = new EvalExecVisitor(new Environment(_env));
@@ -255,8 +260,12 @@ public class Interpreter {
             var frameVisitor = new EvalExecVisitor(frameEnv);
             foreach (var (param, arg) in Definition.Parameters.Zip(arguments))
                 frameEnv.Declare(param, arg);
-            foreach (var s in Definition.Body)
-                s.Accept(frameVisitor);
+            try {
+                foreach (var s in Definition.Body)
+                    s.Accept(frameVisitor);
+            } catch (ReturnOrError r) {
+                return r.Result;
+            }
             return null; // TODO
         }
 
@@ -324,4 +333,14 @@ internal class RuntimeError: Exception {
 
     public SrcLoc Location { get; init; }
     public string Payload { get; init; }
+}
+
+internal class ReturnOrError: RuntimeError {
+    public ReturnOrError(object? result, SrcLoc location)
+      : base(location, "\"return\" outside function body")
+    {
+        Result = result;
+    }
+
+    public object? Result { get; init; }
 }

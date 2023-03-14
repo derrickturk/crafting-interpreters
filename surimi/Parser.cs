@@ -99,6 +99,8 @@ public class Parser {
             return ForRest(tok.Value);
         if ((tok = Match(TokenType.Print)) != null)
             return PrintRest(tok.Value);
+        if ((tok = Match(TokenType.Return)) != null)
+            return ReturnRest(tok.Value);
         if ((tok = Match(TokenType.LBrace)) != null)
             return BlockRest(tok.Value);
 
@@ -184,6 +186,13 @@ public class Parser {
         var e = Expression();
         Require("expected ';'", TokenType.Semicolon);
         return new Print(e, print.Location);
+    }
+
+    private Return ReturnRest(Token print)
+    {
+        var e = Expression();
+        Require("expected ';'", TokenType.Semicolon);
+        return new Return(e, print.Location);
     }
 
     private Block BlockRest(Token lbrace)
