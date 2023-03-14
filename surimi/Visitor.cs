@@ -22,27 +22,27 @@ public interface StmtVisitor<T> {
 
 // a "template" traversal which just visits things and does nothing
 public class Traverser: ExprVisitor<ValueTuple>, StmtVisitor<ValueTuple> {
-    public ValueTuple VisitLiteral(Literal e) => ValueTuple.Create();
+    public virtual ValueTuple VisitLiteral(Literal e) => ValueTuple.Create();
 
-    public ValueTuple VisitUnOpApp(UnOpApp e) => e.Operand.Accept(this);
+    public virtual ValueTuple VisitUnOpApp(UnOpApp e) => e.Operand.Accept(this);
 
-    public ValueTuple VisitBinOpApp(BinOpApp e)
+    public virtual ValueTuple VisitBinOpApp(BinOpApp e)
     {
         e.Lhs.Accept(this);
         e.Rhs.Accept(this);
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitVar(Var e) => ValueTuple.Create();
+    public virtual ValueTuple VisitVar(Var e) => ValueTuple.Create();
 
-    public ValueTuple VisitAssign(Assign e)
+    public virtual ValueTuple VisitAssign(Assign e)
     {
         e.Variable.Accept(this);
         e.Value.Accept(this);
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitCall(Call e)
+    public virtual ValueTuple VisitCall(Call e)
     {
         e.Callee.Accept(this);
         foreach (var expr in e.Arguments)
@@ -50,13 +50,13 @@ public class Traverser: ExprVisitor<ValueTuple>, StmtVisitor<ValueTuple> {
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitExprStmt(ExprStmt s)
+    public virtual ValueTuple VisitExprStmt(ExprStmt s)
     {
         s.Expression.Accept(this);
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitIfElse(IfElse s)
+    public virtual ValueTuple VisitIfElse(IfElse s)
     {
         s.Condition.Accept(this);
         s.If.Accept(this);
@@ -65,33 +65,33 @@ public class Traverser: ExprVisitor<ValueTuple>, StmtVisitor<ValueTuple> {
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitWhile(While s)
+    public virtual ValueTuple VisitWhile(While s)
     {
         s.Condition.Accept(this);
         s.Body.Accept(this);
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitPrint(Print s)
+    public virtual ValueTuple VisitPrint(Print s)
     {
         s.Expression.Accept(this);
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitReturn(Return s)
+    public virtual ValueTuple VisitReturn(Return s)
     {
         s.Expression.Accept(this);
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitBlock(Block s)
+    public virtual ValueTuple VisitBlock(Block s)
     {
         foreach (var stmt in s.Statements)
             stmt.Accept(this);
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitVarDecl(VarDecl s)
+    public virtual ValueTuple VisitVarDecl(VarDecl s)
     {
         s.Variable.Accept(this);
         if (s.Initializer != null)
@@ -99,7 +99,7 @@ public class Traverser: ExprVisitor<ValueTuple>, StmtVisitor<ValueTuple> {
         return ValueTuple.Create();
     }
 
-    public ValueTuple VisitFunDef(FunDef s)
+    public virtual ValueTuple VisitFunDef(FunDef s)
     {
         s.Name.Accept(this);
         foreach (var p in s.Parameters)

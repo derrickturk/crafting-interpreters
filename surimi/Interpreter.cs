@@ -18,6 +18,10 @@ public class Interpreter {
             return;
 
         // null iff HadError, so ! is safe
+        var scopesOut = Resolver.Resolve(prog!, _onError);
+        if (_onError.HadError)
+            return;
+
         ExecuteStatements(prog!);
     }
 
