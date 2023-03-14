@@ -188,11 +188,14 @@ public class Parser {
         return new Print(e, print.Location);
     }
 
-    private Return ReturnRest(Token print)
+    private Return ReturnRest(Token return_)
     {
+        if (Match(TokenType.Semicolon) != null)
+            return new Return(new Literal(null, return_.Location),
+              return_.Location);
         var e = Expression();
         Require("expected ';'", TokenType.Semicolon);
-        return new Return(e, print.Location);
+        return new Return(e, return_.Location);
     }
 
     private Block BlockRest(Token lbrace)

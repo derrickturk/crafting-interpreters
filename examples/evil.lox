@@ -1,0 +1,5 @@
+var x = 3;
+fun f() { x = x + 1; }
+var x = 5;
+f();
+print x;
