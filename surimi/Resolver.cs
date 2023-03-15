@@ -60,7 +60,7 @@ internal class Resolver: Traverser {
 
     public override ValueTuple VisitVarDecl(VarDecl s)
     {
-        Declare(s.Variable.Name);
+        Declare(s.Variable);
         if (s.Initializer != null)
             s.Initializer.Accept(this);
         Define(s.Variable.Name);
@@ -98,15 +98,25 @@ internal class Resolver: Traverser {
         PopScope();
     }
 
+    private bool AtGlobalScope => _stateStack.Count == 1;
+
     private Dictionary<string, VariableState> ScopeStates => _stateStack.Peek();
 
     private Dictionary<Var, int> VariableScopesOut => _scopesOut;
 
-    private void Declare(string v)
+    // this one has to take Var, because it needs a Location to error at...
+    private void Declare(Var v)
     {
-        ScopeStates[v] = VariableState.Declared;
+        if (!AtGlobalScope && ScopeStates.ContainsKey(v.Name))
+            _onError.Error(v.Location,
+              $"variable {v.Name} already defined in this scope");
+        ScopeStates[v.Name] = VariableState.Declared;
     }
 
+    /* ...but this one has to take string, because it gets called on
+     *   globals from "nowhere".
+     * sigh.
+     */
     private void Define(string v)
     {
         ScopeStates[v] = VariableState.Defined;
