@@ -6,12 +6,14 @@ internal enum VariableState {
 }
 
 internal class Resolver: Traverser {
-    public Resolver(ErrorReporter onError)
+    public Resolver(IEnumerable<string> globalBindings, ErrorReporter onError)
     {
         _onError = onError;
         _stateStack = new Stack<Dictionary<string, VariableState>>();
         _stateStack.Push(new Dictionary<string, VariableState>());
         _scopesOut = new Dictionary<Var, int>();
+        foreach (var name in globalBindings)
+            Define(name);
     }
 
     public override ValueTuple VisitVar(Var v)
@@ -21,6 +23,14 @@ internal class Resolver: Traverser {
             _onError.Error(v.Location,
               $"cannot use variable {v.Name} in its own initializer");
         }
+        ResolveVar(v);
+        return ValueTuple.Create();
+    }
+
+    public override ValueTuple VisitAssign(Assign e)
+    {
+        e.Value.Accept(this);
+        e.Value.Accept(this);
         return ValueTuple.Create();
     }
 
@@ -42,15 +52,32 @@ internal class Resolver: Traverser {
         return ValueTuple.Create();
     }
 
-    public static Dictionary<Var, int>? Resolve(List<Stmt> program,
-      ErrorReporter onError)
+    public override ValueTuple VisitFunDef(FunDef s) 
     {
-        var r = new Resolver(onError);
+        Define(s.Name.Name);
+        ResolveFunDefOrMethod(s);
+        return ValueTuple.Create();
+    }
+
+    public static Dictionary<Var, int>? Resolve(List<Stmt> program,
+      IEnumerable<string> globalBindings, ErrorReporter onError)
+    {
+        var r = new Resolver(globalBindings, onError);
         foreach (var stmt in program)
             stmt.Accept(r);
         if (onError.HadError)
             return null;
         return r.VariableScopesOut;
+    }
+
+    private void ResolveFunDefOrMethod(FunDef s)
+    {
+        PushScope();
+        foreach (var p in s.Parameters)
+            Define(p.Name);
+        foreach (var stmt in s.Body)
+            stmt.Accept(this);
+        PopScope();
     }
 
     private Dictionary<string, VariableState> ScopeStates => _stateStack.Peek();
@@ -67,7 +94,7 @@ internal class Resolver: Traverser {
         ScopeStates[v] = VariableState.Defined;
     }
 
-    private void Resolve(Var v)
+    private void ResolveVar(Var v)
     {
         int i = 0;
         foreach (var frame in _stateStack) {

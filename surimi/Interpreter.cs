@@ -6,9 +6,8 @@ public class Interpreter {
     public Interpreter(ErrorReporter onError)
     {
         _onError = onError;
-        _env = new Environment();
+        _globals = new Environment();
         RegisterBuiltins();
-        _visitor = new EvalExecVisitor(_env);
     }
 
     public void Run(string code, string filename)
@@ -18,11 +17,13 @@ public class Interpreter {
             return;
 
         // null iff HadError, so ! is safe
-        var scopesOut = Resolver.Resolve(prog!, _onError);
+        var scopesOut = Resolver.Resolve(prog!,
+          _globals.LocalBindings, _onError);
         if (_onError.HadError)
             return;
 
-        ExecuteStatements(prog!);
+        var visitor = new EvalExecVisitor(_globals, scopesOut!);
+        visitor.ExecuteStatements(prog!, _onError);
     }
 
     internal static bool ValueTruthy(object? val) => val switch
@@ -55,38 +56,40 @@ public class Interpreter {
         _ => throw new InvalidOperationException("invalid runtime value"),
     };
 
-    private void ExecuteStatements(List<Stmt> prog)
-    {
-        try {
-            foreach (var stmt in prog)
-                stmt.Accept(_visitor);
-        } catch (RuntimeError e) {
-            _onError.Error(e.Location, e.Payload);
-        }
-    }
-
-    private object? EvaluateExpression(Expr expr)
-    {
-        try {
-            return expr.Accept(_visitor);
-        } catch (RuntimeError e) {
-            _onError.Error(e.Location, e.Payload);
-            return null;
-        }
-    }
-
     private void RegisterBuiltins()
     {
         foreach (var builtin in Builtin.BuiltinFunctions)
-            _env.Declare(new Var(builtin.Name, Builtin.BuiltinLocation),
+            _globals.Declare(new Var(builtin.Name, Builtin.BuiltinLocation),
               builtin);
     }
 
     private class EvalExecVisitor
       : ExprVisitor<object?>, StmtVisitor<ValueTuple> {
-        public EvalExecVisitor(Environment env)
+        public EvalExecVisitor(Environment env,
+          Dictionary<Var, int> variableScopesOut)
         {
             _env = env;
+            _scopesOut = variableScopesOut;
+        }
+
+        public void ExecuteStatements(List<Stmt> prog, ErrorReporter onError)
+        {
+            try {
+                foreach (var stmt in prog)
+                    stmt.Accept(this);
+            } catch (RuntimeError e) {
+                onError.Error(e.Location, e.Payload);
+            }
+        }
+
+        public object? EvaluateExpression(Expr expr, ErrorReporter onError)
+        {
+            try {
+                return expr.Accept(this);
+            } catch (RuntimeError e) {
+                onError.Error(e.Location, e.Payload);
+                return null;
+            }
         }
 
         public object? VisitLiteral(Literal e) => e.Value;
@@ -174,7 +177,7 @@ public class Interpreter {
 
         public object? VisitVar(Var e)
         {
-            return _env[e];
+            return _env[e, _scopesOut[e]];
         }
 
         public object? VisitAssign(Assign e)
@@ -233,7 +236,8 @@ public class Interpreter {
 
         public ValueTuple VisitBlock(Block s)
         {
-            var innerVisitor = new EvalExecVisitor(new Environment(_env));
+            var innerVisitor = new EvalExecVisitor(
+              new Environment(_env), _scopesOut);
             foreach (var stmt in s.Statements)
                 stmt.Accept(innerVisitor);
             return ValueTuple.Create();
@@ -247,23 +251,24 @@ public class Interpreter {
 
         public ValueTuple VisitFunDef(FunDef s)
         {
-            _env.Declare(s.Name, new LoxFunction(s, _env));
+            _env.Declare(s.Name, new LoxFunction(s, _env, _scopesOut));
             return ValueTuple.Create();
         }
 
         private Environment _env;
+        private Dictionary<Var, int> _scopesOut;
     }
 
-    private record class LoxFunction(FunDef Definition, Environment Env)
-      : Callable {
+    private record class LoxFunction(FunDef Definition, Environment Env,
+      Dictionary<Var, int> VariableScopesOut): Callable {
         public int Arity => Definition.Parameters.Count;
 
         public object? Call(List<object?> arguments)
         {
             var frameEnv = new Environment(Env);
-            var frameVisitor = new EvalExecVisitor(frameEnv);
             foreach (var (param, arg) in Definition.Parameters.Zip(arguments))
                 frameEnv.Declare(param, arg);
+            var frameVisitor = new EvalExecVisitor(frameEnv, VariableScopesOut);
             try {
                 foreach (var s in Definition.Body)
                     s.Accept(frameVisitor);
@@ -277,8 +282,7 @@ public class Interpreter {
     }
 
     private ErrorReporter _onError;
-    private Environment _env;
-    private EvalExecVisitor _visitor;
+    private Environment _globals;
 }
 
 public class Environment {
@@ -312,12 +316,46 @@ public class Environment {
         }
     }
 
+    public object? this[Var variable, int depth]
+    {
+        get
+        {
+            if (depth <= 0)
+                return this[variable];
+            if (_parent == null)
+                throw new InvalidOperationException(
+                  "internal error: stack mismatch with resolved depth");
+            return this._parent[variable, depth - 1];
+        }
+
+        set
+        {
+            if (depth <= 0)
+                this[variable] = value;
+            this[variable, depth - 1] = value;
+        }
+    }
+
     public void Declare(Var variable, object? initializer)
     {
         _locals[variable.Name] = initializer;
     }
 
     public Environment? Parent => _parent;
+
+    public IEnumerable<string> LocalBindings => _locals.Keys;
+
+    public IEnumerable<string> AllBindings
+    {
+        get
+        {
+            foreach (var name in LocalBindings)
+                yield return name;
+            if (Parent != null)
+                foreach (var name in Parent.AllBindings)
+                    yield return name;
+        }
+    }
 
     private Dictionary<string, object?> _locals;
     private Environment? _parent;
