@@ -1,0 +1,16 @@
+// a list is its left fold
+
+fun empty(init, f) { return init; }
+
+fun cons(x, xs) {
+    fun do(init, f) {
+        return xs(f(init, x), f);
+    }
+    return do;
+}
+
+var xs = cons(1, cons(2, cons(3, empty)));
+
+fun print_each(init, x) { print x; }
+
+xs(nil, print_each);
