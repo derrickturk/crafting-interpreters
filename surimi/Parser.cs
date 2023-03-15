@@ -191,8 +191,7 @@ public class Parser {
     private Return ReturnRest(Token return_)
     {
         if (Match(TokenType.Semicolon) != null)
-            return new Return(new Literal(null, return_.Location),
-              return_.Location);
+            return new Return(null, return_.Location);
         var e = Expression();
         Require("expected ';'", TokenType.Semicolon);
         return new Return(e, return_.Location);

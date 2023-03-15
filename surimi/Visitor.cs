@@ -80,7 +80,8 @@ public class Traverser: ExprVisitor<ValueTuple>, StmtVisitor<ValueTuple> {
 
     public virtual ValueTuple VisitReturn(Return s)
     {
-        s.Expression.Accept(this);
+        if (s.Expression != null)
+            s.Expression.Accept(this);
         return ValueTuple.Create();
     }
 

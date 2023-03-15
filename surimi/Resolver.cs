@@ -5,6 +5,11 @@ internal enum VariableState {
     Defined,
 }
 
+internal enum FunctionKind {
+    None,
+    Function,
+}
+
 internal class Resolver: Traverser {
     public Resolver(IEnumerable<string> globalBindings, ErrorReporter onError)
     {
@@ -12,6 +17,7 @@ internal class Resolver: Traverser {
         _stateStack = new Stack<Dictionary<string, VariableState>>();
         _stateStack.Push(new Dictionary<string, VariableState>());
         _scopesOut = new Dictionary<Var, int>();
+        _functionKind = FunctionKind.None;
         foreach (var name in globalBindings)
             Define(name);
     }
@@ -34,12 +40,12 @@ internal class Resolver: Traverser {
         return ValueTuple.Create();
     }
 
-    public override ValueTuple VisitVarDecl(VarDecl s)
+    public override ValueTuple VisitReturn(Return s)
     {
-        Declare(s.Variable.Name);
-        if (s.Initializer != null)
-            s.Initializer.Accept(this);
-        Define(s.Variable.Name);
+        if (_functionKind == FunctionKind.None)
+            _onError.Error(s.Location, "return outside function/method body");
+        if (s.Expression != null)
+            s.Expression.Accept(this);
         return ValueTuple.Create();
     }
 
@@ -52,10 +58,22 @@ internal class Resolver: Traverser {
         return ValueTuple.Create();
     }
 
+    public override ValueTuple VisitVarDecl(VarDecl s)
+    {
+        Declare(s.Variable.Name);
+        if (s.Initializer != null)
+            s.Initializer.Accept(this);
+        Define(s.Variable.Name);
+        return ValueTuple.Create();
+    }
+
     public override ValueTuple VisitFunDef(FunDef s) 
     {
         Define(s.Name.Name);
+        var currentKind = _functionKind;
+        _functionKind = FunctionKind.Function;
         ResolveFunDefOrMethod(s);
+        _functionKind = currentKind;
         return ValueTuple.Create();
     }
 
@@ -124,4 +142,5 @@ internal class Resolver: Traverser {
     private ErrorReporter _onError;
     private Stack<Dictionary<string, VariableState>> _stateStack;
     private Dictionary<Var, int> _scopesOut;
+    private FunctionKind _functionKind;
 }

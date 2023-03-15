@@ -101,7 +101,8 @@ public record class Print (Expr Expression, SrcLoc Location): Stmt (Location) {
     }
 }
 
-public record class Return (Expr Expression, SrcLoc Location): Stmt (Location) {
+public record class Return (Expr? Expression, SrcLoc Location)
+  : Stmt (Location) {
     public override T Accept<T>(StmtVisitor<T> visitor)
     {
         return visitor.VisitReturn(this);

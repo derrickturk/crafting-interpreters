@@ -231,7 +231,7 @@ public class Interpreter {
 
         public ValueTuple VisitReturn(Return s)
         {
-            throw new ReturnOrError(s.Expression.Accept(this), s.Location);
+            throw new ReturnException(s.Expression?.Accept(this));
         }
 
         public ValueTuple VisitBlock(Block s)
@@ -272,7 +272,7 @@ public class Interpreter {
             try {
                 foreach (var s in Definition.Body)
                     s.Accept(frameVisitor);
-            } catch (ReturnOrError r) {
+            } catch (ReturnException r) {
                 return r.Result;
             }
             return null;
@@ -377,9 +377,8 @@ internal class RuntimeError: Exception {
     public string Payload { get; init; }
 }
 
-internal class ReturnOrError: RuntimeError {
-    public ReturnOrError(object? result, SrcLoc location)
-      : base(location, "\"return\" outside function body")
+internal class ReturnException: Exception {
+    public ReturnException(object? result)
     {
         Result = result;
     }
