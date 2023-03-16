@@ -3,6 +3,7 @@ type details =
   | InvalidReturn
   | ParseExpected of string
   | TypeError of string
+  | UndefinedVariable of string
   | UnexpectedCharacter of char
   | UnterminatedStrLit
   [@@deriving show]

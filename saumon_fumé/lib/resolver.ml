@@ -30,9 +30,20 @@ let is_global { parent; _ } = parent = None
 
 let has_local { locals; _ } name = StrMap.mem name locals
 
+let rec find_opt { parent; locals; _ } name =
+  let open Option_monad in
+  match StrMap.find_opt name locals with
+    | Some (slot, _) -> Some (0, slot)
+    | None ->
+        let* p = parent in
+        let+ (depth, slot) = find_opt p name in
+        (depth + 1, slot)
+
+(*
 type resolve_ctx = resolve_frame * Error.t list
 
 type 'a resolve_state = ('a, resolve_ctx) State_monad.t
+*)
 
 let fail item loc =
   State_monad.modify (fun (f, errs) -> (f, { item; loc }::errs))
@@ -67,31 +78,37 @@ let define { item; _ } =
 let define_builtins =
   State_monad.sequence (fun n -> define { item = n; loc = BuiltIns })
 
-(*
-let rec traverse_stmts f errs stmts =
-  let rec go f errs rev_stmts = function
-    | [] -> (f, errs, List.rev rev_stmts)
-    | stmt::rest ->
-        let f', errs', stmt' = resolve_stmt f errs stmt in
-        go f' errs' (stmt'::rev_stmts)
-  in go f errs [] stmts
+let resolve { item; loc } =
+  let open State_monad in
+  let* (f, _) = get in
+  match find_opt f item with
+    | Some (depth, slot) -> return {
+        item = (item, depth, slot);
+        loc;
+      }
+    | None ->
+        let* () = fail
+          { Error.lexeme = None; details = UndefinedVariable item }
+          loc
+        in return {
+          (* ugly, but this will always be thrown away because an
+           *   error is produced *)
+          item = (item, -1, -1);
+          loc;
+        }
 
-and resolve_stmt f errs = function
-  | { item = Expr e; loc } ->
-      let f', errs', e' = resolve_expr f errs e
-      in { item = Expr e'; loc }
-  | { item = Print e; loc } ->
-      let f', errs', e' = resolve_expr f errs e
-      in { item = Print e'; loc }
-  (*
-  | { item = VarDecl (v, e); loc } ->
-      match declare f v with
-        | Some f' ->
-  *)
-*)
-
-let resolve_expr { item; loc } = match item with
-  | _ -> failwith "TODO"
+let rec resolve_expr { item; loc } =
+  let open State_monad in
+  let+ item' = match item with
+    | SP.Lit v -> return (SR.Lit v)
+    | SP.UnaryOp (op, e) ->
+        let+ e' = resolve_expr e in SR.UnaryOp (op, e')
+    | SP.BinaryOp (op, e1, e2) ->
+        let+ e1' = resolve_expr e1
+        and+ e2' = resolve_expr e2
+        in SR.BinaryOp (op, e1', e2')
+    | SP.Var v -> let+ v' = resolve v in SR.Var v'
+  in { item = item'; loc }
 
 let resolve_stmt { item; loc } =
   let open State_monad in
@@ -108,8 +125,8 @@ let resolve_stmt { item; loc } =
           | None -> return None
         in
         let* () = define v in
-        (* TODO TODO TODO *)
-        return (SR.VarDecl ({ item = (v.item, 0, 0); loc = v.loc }, init'))
+        let* v' = resolve v in
+        return (SR.VarDecl (v', init'))
   in { item = item'; loc }
 
 let resolve prog builtins =

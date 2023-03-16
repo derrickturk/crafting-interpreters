@@ -3,6 +3,7 @@ type details =
   | InvalidReturn
   | ParseExpected of string
   | TypeError of string
+  | UndefinedVariable of string
   | UnexpectedCharacter of char
   | UnterminatedStrLit
   [@@deriving show]
@@ -12,6 +13,7 @@ let pprint_details = function
   | InvalidReturn -> "return outside function or method body"
   | ParseExpected what -> "expected " ^ what
   | TypeError msg -> "type error: " ^ msg
+  | UndefinedVariable name -> "undefined variable " ^ name
   | UnexpectedCharacter c -> "unexpected character " ^ String.make 1 c
   | UnterminatedStrLit -> "unterminated string literal"
 
