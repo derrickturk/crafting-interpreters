@@ -1,7 +1,9 @@
-val eval_expr: Syntax.AsResolved.expr Syntax.AsResolved.annot
+val eval_expr: Env.t
+  -> Syntax.AsResolved.expr Syntax.AsResolved.annot
   -> (Value.t, Error.t) result
 
-val exec_stmt: Syntax.AsResolved.stmt Syntax.AsResolved.annot
+val exec_stmt: Env.t
+  -> Syntax.AsResolved.stmt Syntax.AsResolved.annot
   -> (unit, Error.t) result
 
-val exec: Syntax.AsResolved.prog -> (unit, Error.t) result
+val exec: Env.t -> Syntax.AsResolved.prog -> (unit, Error.t) result

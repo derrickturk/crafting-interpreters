@@ -12,7 +12,8 @@ let run src =
   let run_impl src =
     let* prog = parse src in
     let* resolved = resolve prog [] in
-    Result.map_error (fun e -> [e]) (exec resolved.program)
+    let env = Env.global resolved in
+    Result.map_error (fun e -> [e]) (exec env resolved.program)
   in
   match run_impl src with
     | Error es ->
