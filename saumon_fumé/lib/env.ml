@@ -6,10 +6,11 @@ type t = {
 let global r =
   let open Resolver in
   let open Value in
-  let frame = Array.make r.global_slots Nil in
+  let frame = Array.make (slots r.global_frame) Nil in
   { frame; parent = None }
 
-let expand e { Resolver.global_slots; _ } =
+let expand e globals =
+  let global_slots = Resolver.slots globals in
   let len = Array.length e.frame in
   let gap = global_slots - len in
   if gap > 0

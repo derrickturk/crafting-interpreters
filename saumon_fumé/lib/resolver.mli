@@ -1,9 +1,19 @@
+type var_state =
+  | Declared
+  | Defined
+
+type resolve_frame
+
 type t = {
   program: Syntax.AsResolved.prog;
-  global_slots: int;
+  global_frame: resolve_frame;
   builtins: Syntax.AsResolved.var Syntax.AsResolved.annot list;
 }
 
-type resolve_ctx;
+val slots: resolve_frame -> int
 
 val resolve: Syntax.AsParsed.prog -> string list -> (t, Error.t list) result
+
+val resolve_incremental: resolve_frame
+  -> Syntax.AsParsed.prog
+  -> (Syntax.AsResolved.prog * resolve_frame, Error.t list) result

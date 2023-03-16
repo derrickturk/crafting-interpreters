@@ -5,12 +5,6 @@ module StrMap = Map.Make (String)
 module SP = Syntax.AsParsed
 module SR = Syntax.AsResolved
 
-type t = {
-  program: Syntax.AsResolved.prog;
-  global_slots: int;
-  builtins: Syntax.AsResolved.var Syntax.AsResolved.annot list;
-}
-
 type var_state =
   | Declared
   | Defined
@@ -27,15 +21,19 @@ type resolve_frame = {
   parent: resolve_frame option;
 }
 
-type resolve_ctx = resolve_frame * Error.t list
-
-type 'a resolve_state = ('a, resolve_ctx) State_monad.t
+let slots { slots; _ } = slots
 
 let init_global = {
   slots = 0;
   locals = StrMap.empty;
   (* kind = None; *)
   parent = None;
+}
+
+type t = {
+  program: Syntax.AsResolved.prog;
+  global_frame: resolve_frame;
+  builtins: Syntax.AsResolved.var Syntax.AsResolved.annot list;
 }
 
 let is_global { parent; _ } = parent = None
@@ -151,7 +149,13 @@ let resolve prog builtins =
   match run (init_global, []) resolve_s with
     | ((builtins', prog'), (f, [])) -> Ok {
         program = prog';
-        global_slots = f.slots;
+        global_frame = f;
         builtins = builtins';
       }
+    | (_, (_, errs)) -> Error (List.rev errs)
+
+let resolve_incremental global prog =
+  let open State_monad in
+  match run (global, []) (traverse resolve_stmt prog) with
+    | (prog', (f, [])) -> Ok (prog', f)
     | (_, (_, errs)) -> Error (List.rev errs)
