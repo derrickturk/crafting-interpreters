@@ -11,7 +11,7 @@ let run src =
   in
   let run_impl src =
     let* prog = parse src in
-    let* resolved = resolve prog in
+    let* resolved = resolve prog [] in
     Ok resolved
   in
   match run_impl src with

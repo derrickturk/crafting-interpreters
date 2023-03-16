@@ -1,4 +1,6 @@
 type details =
+  | AlreadyDefined of string
+  | InvalidReturn
   | ParseExpected of string
   | TypeError of string
   | UnexpectedCharacter of char

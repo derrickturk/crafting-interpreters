@@ -1,4 +1,6 @@
 type details =
+  | AlreadyDefined of string
+  | InvalidReturn
   | ParseExpected of string
   | TypeError of string
   | UnexpectedCharacter of char
@@ -6,6 +8,8 @@ type details =
   [@@deriving show]
 
 let pprint_details = function
+  | AlreadyDefined name -> "variable " ^ name ^ " already defined in scope"
+  | InvalidReturn -> "return outside function or method body"
   | ParseExpected what -> "expected " ^ what
   | TypeError msg -> "type error: " ^ msg
   | UnexpectedCharacter c -> "unexpected character " ^ String.make 1 c
