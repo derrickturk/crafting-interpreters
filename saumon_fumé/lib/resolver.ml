@@ -5,6 +5,12 @@ module StrMap = Map.Make (String)
 module SP = Syntax.AsParsed
 module SR = Syntax.AsResolved
 
+type t = {
+  program: Syntax.AsResolved.prog;
+  global_slots: int;
+  builtins: Syntax.AsResolved.var Syntax.AsResolved.annot list;
+}
+
 type var_state =
   | Declared
   | Defined
@@ -77,9 +83,6 @@ let define { item; _ } =
           locals = StrMap.add item (f.slots, Defined) f.locals;
         }
 
-let define_builtins =
-  State_monad.sequence (fun n -> define { item = n; loc = BuiltIns })
-
 let resolve { item; loc } =
   let open State_monad in
   let* (f, _) = get in
@@ -98,6 +101,15 @@ let resolve { item; loc } =
           item = (item, -1, -1);
           loc;
         }
+
+let define_builtins names =
+  let open State_monad in
+  let define_builtin n =
+    let v = { item = n; loc = BuiltIns } in
+    let* () = define v in
+    resolve v
+  in
+  traverse define_builtin names
 
 let rec resolve_expr { item; loc } =
   let open State_monad in
@@ -134,9 +146,14 @@ let resolve_stmt { item; loc } =
 let resolve prog builtins =
   let open State_monad in
   let resolve_s =
-    let* () = define_builtins builtins in
-    traverse resolve_stmt prog
+    let+ builtins' = define_builtins builtins
+    and+ prog' = traverse resolve_stmt prog in
+    (builtins', prog')
   in
   match run (init_global, []) resolve_s with
-    | (prog', (f, [])) -> Ok (prog', f.slots)
+    | ((builtins', prog'), (f, [])) -> Ok {
+        program = prog';
+        global_slots = f.slots;
+        builtins = builtins';
+      }
     | (_, (_, errs)) -> Error (List.rev errs)
