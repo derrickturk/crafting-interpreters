@@ -9,20 +9,22 @@ type var_state =
   | Declared
   | Defined
 
+(*
 type fn_kind =
   | Function
+*)
 
 type resolve_frame = {
   slots: int;
   locals: (int * var_state) StrMap.t;
-  kind: fn_kind option;
+  (* kind: fn_kind option; *)
   parent: resolve_frame option;
 }
 
 let init_global = {
   slots = 0;
   locals = StrMap.empty;
-  kind = None;
+  (* kind = None; *)
   parent = None;
 }
 
