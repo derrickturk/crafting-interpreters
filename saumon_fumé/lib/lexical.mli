@@ -37,9 +37,7 @@ type token_kind =
   | True
   | Var
   | While
-  [@@deriving show]
 
-type token = { kind: token_kind; lexeme: string; line: int }
-  [@@deriving show]
+type token = { kind: token_kind; lexeme: string }
 
-val lex: string -> (token, Error.t) result Seq.t
+val lex: string -> (token Located.t, Error.t) result Seq.t

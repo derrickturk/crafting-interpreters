@@ -7,7 +7,10 @@ type details =
 
 val pprint_details: details -> string
 
-type t = { line: int option; lexeme: string option; details: details }
-  [@@deriving show]
+type error = { lexeme: string option; details: details }
+
+val pprint_error: error -> string
+
+type t = error Located.t
 
 val pprint: t -> string

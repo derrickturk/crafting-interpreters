@@ -1,1 +1,1 @@
-val parse_expr: string -> (Syntax.expr, Error.t list) result
+val parse_expr: string -> (Syntax.AsParsed.expr Located.t, Error.t list) result

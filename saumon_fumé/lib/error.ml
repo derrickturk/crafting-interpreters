@@ -11,16 +11,16 @@ let pprint_details = function
   | UnexpectedCharacter c -> "unexpected character " ^ String.make 1 c
   | UnterminatedStrLit -> "unterminated string literal"
 
-type t = { line: int option; lexeme: string option; details: details }
-  [@@deriving show]
+type error = { lexeme: string option; details: details }
 
-let pprint { line; lexeme; details } =
-  let start = match line with
-    | Some l -> "[line " ^ string_of_int l ^ "] Error"
-    | None -> "[end of input] Error"
-  in
+let pprint_error { lexeme; details } =
   let where = match lexeme with
     | Some l -> " at \"" ^ l ^ "\""
     | None -> ""
   in
-  start ^ where ^ ": " ^ pprint_details details
+  "Error" ^ where ^ ": " ^ pprint_details details
+
+type t = error Located.t
+
+let pprint { Located.item; loc } =
+  Located.pprint_location loc ^ " " ^ pprint_error item

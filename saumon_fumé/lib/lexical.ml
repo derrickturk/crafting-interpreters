@@ -37,22 +37,35 @@ type token_kind =
   | True
   | Var
   | While
-  [@@deriving show]
 
-type token = { kind: token_kind; lexeme: string; line: int }
-  [@@deriving show]
+type token = { kind: token_kind; lexeme: string }
 
 module Lexer = struct
-  type t = { input: string; start_pos: int; next_pos: int; line: int }
+  type t = {
+    input: string;
+    start_pos: int;
+    next_pos: int;
+    line: int;
+    line_char: int;
+  }
 
-  let init source = { input = source; start_pos = 0; next_pos = 0; line = 1 }
+  let init source = {
+    input = source;
+    start_pos = 0;
+    next_pos = 0;
+    line = 1;
+    line_char = 1;
+  }
 
   let peek_n { input; next_pos; _ } n = try
     Some(input.[next_pos + n])
   with _ -> None
 
   let consume l = try
-    Some(({ l with next_pos = l.next_pos + 1 }, l.input.[l.next_pos]))
+    Some((
+      { l with next_pos = l.next_pos + 1; line_char = l.line_char + 1 },
+      l.input.[l.next_pos]
+    ))
   with _ -> None
 
   let match_where l p = match consume l with
@@ -70,15 +83,28 @@ module Lexer = struct
 
   let step l = { l with start_pos = l.next_pos }
 
+  let here_loc l = 
+    let open Located in
+    LinePos { line = l.line; pos = l.line_char }
+
+  let token_loc l =
+    let open Located in
+    let pos = l.line_char - (l.next_pos - l.start_pos) in
+    LinePos { line = l.line; pos }
+
   let token_here l f =
+    let open Located in
     let lm = lexeme l in
-    (step l, Ok({ kind = f lm; lexeme = lm; line = l.line }))
+    (step l, Ok({ item = { kind = f lm; lexeme = lm }; loc = token_loc l }))
 
   let error_here l details =
-    (step l, Error({ Error.line = Some l.line; lexeme = None; details }))
+    let open Located in
+    let open Error in
+    (step l, Error({ item = { lexeme = None; details }; loc = here_loc l }))
 
   let rec strip_comment l = match consume l with
-    | Some((_, '\n')) -> { l with line = l.line + 1 }
+    | Some((_, '\n')) ->
+        { l with line = l.line + 1; line_char = 1 }
     | Some((l', _)) -> strip_comment l'
     | _ -> l
 
@@ -133,7 +159,8 @@ module Lexer = struct
     | None -> None
 
     | Some((l', ('\r' | '\t' | ' '))) -> next (step l')
-    | Some((l', '\n')) -> next { (step l') with line = l'.line + 1 }
+    | Some((l', '\n')) ->
+        next { (step l') with line = l'.line + 1; line_char = 1 }
 
     | Some((l', '(')) -> Some(token_here l' (fun _ -> LParen))
     | Some((l', ')')) -> Some(token_here l' (fun _ -> RParen))
