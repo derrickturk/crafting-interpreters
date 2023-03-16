@@ -14,5 +14,6 @@ val run: 's -> ('a, 's) t -> 'a * 's
 val eval: 's -> ('a, 's) t -> 'a
 val exec: 's -> ('a, 's) t -> 's
 
+(* TODO: functor-ize these out? *)
 val traverse: ('a -> ('b, 's) t) -> 'a list -> ('b list, 's) t
 val sequence: ('a -> (unit, 's) t) -> 'a list -> (unit, 's) t

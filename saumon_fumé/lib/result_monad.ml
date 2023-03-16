@@ -11,3 +11,17 @@ let (let+) r f = Result.map f r
 let (and+) = product
 let (let*) = Result.bind
 let (and*) = product
+
+let traverse f xs =
+  let rec go rev = function
+    | [] -> return (List.rev rev)
+    | hd::tl ->
+        let* hd' = f hd in
+        go (hd'::rev) tl
+  in go [] xs
+
+let rec sequence f = function
+  | [] -> return ()
+  | hd::tl ->
+      let* () = f hd in
+      sequence f tl

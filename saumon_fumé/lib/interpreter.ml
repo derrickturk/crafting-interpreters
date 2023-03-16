@@ -74,3 +74,17 @@ let rec eval_expr { item; loc } =
             }
         end
     | Var _ -> Ok Nil (* TODO *)
+
+let exec_stmt { item; _ } =
+  let open Syntax.AsResolved in
+  let open Result_monad in
+  match item with
+    | Expr e ->
+        let+ _ = eval_expr e in ()
+    | Print e ->
+        let+ v = eval_expr e in
+        print_endline (Value.pprint v)
+    | VarDecl (_, _) ->
+        Ok () (* TODO *)
+
+let exec = Result_monad.sequence exec_stmt

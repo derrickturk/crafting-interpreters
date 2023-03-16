@@ -1,7 +1,7 @@
 open Saumon_fume
 
 let run src =
-  (* let open Interpreter in *)
+  let open Interpreter in
   let open Parser in
   let open Resolver in
   let open Result_monad in
@@ -12,24 +12,13 @@ let run src =
   let run_impl src =
     let* prog = parse src in
     let* resolved = resolve prog [] in
-    Ok resolved
+    Result.map_error (fun e -> [e]) (exec resolved)
   in
   match run_impl src with
     | Error es ->
         List.iter print_error es;
         false
-    | Ok _ ->
-        (*
-        match eval_expr e with
-          | Error e ->
-              print_error e;
-              false
-          | Ok v ->
-              print_endline (Value.pprint v);
-              true
-        *)
-        print_endline "resolved";
-        true
+    | Ok () -> true
 
 let run_interactive () =
   let no_errors = ref true in
