@@ -138,5 +138,5 @@ let resolve prog builtins =
     traverse resolve_stmt prog
   in
   match run (init_global, []) resolve_s with
-    | (prog', (_, [])) -> Ok prog'
+    | (prog', (f, [])) -> Ok (prog', f.slots)
     | (_, (_, errs)) -> Error (List.rev errs)
