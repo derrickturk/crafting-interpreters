@@ -27,6 +27,10 @@ type resolve_frame = {
   parent: resolve_frame option;
 }
 
+type resolve_ctx = resolve_frame * Error.t list
+
+type 'a resolve_state = ('a, resolve_ctx) State_monad.t
+
 let init_global = {
   slots = 0;
   locals = StrMap.empty;
@@ -46,12 +50,6 @@ let rec find_opt { parent; locals; _ } name =
         let* p = parent in
         let+ (depth, slot) = find_opt p name in
         (depth + 1, slot)
-
-(*
-type resolve_ctx = resolve_frame * Error.t list
-
-type 'a resolve_state = ('a, resolve_ctx) State_monad.t
-*)
 
 let fail item loc =
   State_monad.modify (fun (f, errs) -> (f, { item; loc }::errs))
