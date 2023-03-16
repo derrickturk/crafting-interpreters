@@ -73,7 +73,7 @@ let rec eval_expr env { item; loc } =
               loc;
             }
         end
-    | Var _ -> Ok Nil (* TODO *)
+    | Var v -> Ok (Env.read env v.item)
 
 let exec_stmt env { item; _ } =
   let open Syntax.AsResolved in
@@ -84,7 +84,10 @@ let exec_stmt env { item; _ } =
     | Print e ->
         let+ v = eval_expr env e in
         print_endline (Value.pprint v)
-    | VarDecl (_, _) ->
-        Ok () (* TODO *)
+    | VarDecl (v, None) ->
+        Ok (Env.write env v.item Value.Nil)
+    | VarDecl (v, Some init) ->
+        let+ init' = eval_expr env init in
+        Env.write env v.item init'
 
 let exec env = Result_monad.sequence (exec_stmt env)

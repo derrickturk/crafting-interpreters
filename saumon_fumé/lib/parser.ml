@@ -109,16 +109,25 @@ module Parser = struct
         | NumLit n -> Some (Num n)
         | _ -> None
     in
+    let var =
+      function
+        | L.Ident name -> Some name
+        | _ -> None
+    in
     match match_token_opt p literal with
-      | Some (lit, tok) -> Some ({ item = Lit lit; loc = tok.loc })
-      | None -> match match_token p LParen with
-          | Some _ ->
-              let* e = expression p in
-              let* _ = require_kind p RParen "')'" in
-              Some e
-          | None ->
-              let _ = require p (fun _ -> false) "an expression" in
-              None
+      | Some (lit, tok) ->
+          Some { item = Lit lit; loc = tok.loc }
+      | None -> match match_token_opt p var with
+          | Some (v, tok) ->
+              Some { item = Var { item = v; loc = tok.loc }; loc = tok.loc }
+          | None -> match match_token p LParen with
+              | Some _ ->
+                  let* e = expression p in
+                  let* _ = require_kind p RParen "')'" in
+                  Some e
+              | None ->
+                  let _ = require p (fun _ -> false) "an expression" in
+                  None
 
   let rec match_kinds p fallback = function
     | [] -> fallback p
