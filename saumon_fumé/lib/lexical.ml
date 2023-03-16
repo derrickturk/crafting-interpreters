@@ -87,6 +87,10 @@ module Lexer = struct
     let open Located in
     LinePos { line = l.line; pos = l.line_char }
 
+  let prev_loc l =
+    let open Located in
+    LinePos { line = l.line; pos = l.line_char - 1 }
+
   let token_loc l =
     let open Located in
     let pos = l.line_char - (l.next_pos - l.start_pos) in
@@ -102,6 +106,11 @@ module Lexer = struct
     let open Error in
     (step l, Error({ item = { lexeme = None; details }; loc = here_loc l }))
 
+  let error_prev l details =
+    let open Located in
+    let open Error in
+    (step l, Error({ item = { lexeme = None; details }; loc = prev_loc l }))
+
   let rec strip_comment l = match consume l with
     | Some((_, '\n')) ->
         { l with line = l.line + 1; line_char = 1 }
@@ -113,7 +122,7 @@ module Lexer = struct
     match consume l' with
     | Some((l'', '"')) -> token_here l''
         (fun lexeme -> StrLit (String.sub lexeme 1 (String.length lexeme - 2)))
-    | _ -> error_here l UnterminatedStrLit
+    | _ -> error_here l' UnterminatedStrLit
 
   let is_ascii_digit = function
     | '0'..'9' -> true
@@ -201,7 +210,7 @@ module Lexer = struct
 
     | Some((l', c)) when is_ident_begin c -> Some(ident_or_keyword l')
 
-    | Some((l', c)) -> Some(error_here l' (UnexpectedCharacter c))
+    | Some((l', c)) -> Some(error_prev l' (UnexpectedCharacter c))
 end
 
 let lex source () =

@@ -1,1 +1,2 @@
-val eval_expr: Syntax.expr -> (Value.t, Error.t) result
+val eval_expr: Syntax.AsResolved.expr Syntax.AsResolved.annot
+  -> (Value.t, Error.t) result

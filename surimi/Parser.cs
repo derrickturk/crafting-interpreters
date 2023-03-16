@@ -23,13 +23,6 @@ public class Parser {
                 p.Recover();
             }
         }
-
-        try {
-            p.RequireEOF();
-        } catch (ParseError) {
-            failed = true;
-        }
-
         return failed ? null : prog;
     }
 

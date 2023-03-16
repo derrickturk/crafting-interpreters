@@ -1,17 +1,25 @@
 open Saumon_fume
 
 let run src =
-  let open Interpreter in
+  (* let open Interpreter in *)
   let open Parser in
+  let open Resolver in
+  let open Result_monad in
   let print_error e =
     Printf.eprintf "Error: %s\n" (Error.pprint e);
     Out_channel.(flush stderr)
   in
-  match parse_expr src with
+  let run_impl src =
+    let* prog = parse src in
+    let* resolved = resolve prog in
+    Ok resolved
+  in
+  match run_impl src with
     | Error es ->
         List.iter print_error es;
         false
-    | Ok e ->
+    | Ok _ ->
+        (*
         match eval_expr e with
           | Error e ->
               print_error e;
@@ -19,6 +27,9 @@ let run src =
           | Ok v ->
               print_endline (Value.pprint v);
               true
+        *)
+        print_endline "resolved";
+        true
 
 let run_interactive () =
   let no_errors = ref true in
