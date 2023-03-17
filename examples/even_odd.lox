@@ -1,0 +1,14 @@
+fun isOdd(n) {
+  if (n == 0) return false;
+  return isEven(n - 1);
+}
+
+fun isEven(n) {
+  if (n == 0) return true;
+  return isOdd(n - 1);
+}
+
+for (var i = 0; i < 10; i = i + 1) {
+    if (isOdd(i))
+        print to_string(i) + " is odd";
+}

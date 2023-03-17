@@ -3,6 +3,7 @@ namespace Surimi;
 internal enum VariableState {
     Declared,
     Defined,
+    Deferred,
 }
 
 internal enum FunctionKind {
@@ -131,9 +132,27 @@ internal class Resolver: Traverser {
                 return;
             }
             ++i;
+
+            if (i == _stateStack.Count) {
+                /* so gross: the language semantics *require* us to defer variable
+                 *   resolution to runtime, in case they're globals that get defined
+                 *   later in the text; basically all global definitions are mutually
+                 *   recursive and incremental.
+                 * so this fallback amounts to: assume global and "defer"; we don't
+                 *   do anything with the Deferred state yet, but we might... 
+                 */
+
+                /* so grosser: .NET Stack doesn't have random access, List
+                 *   doesn't have push and pop, and there ain't a Deque.
+                 * I don't feel like writing extension methods or wrappers,
+                 *   so this is my hack to operate on the "bottom" of the stack;
+                 *   i.e. the global frame
+                 */
+                _scopesOut[v] = i - 1;
+                frame[v.Name] = VariableState.Deferred;
+            }
         }
-        _scopesOut[v] = -1;
-        _onError.Error(v.Location, $"use of undeclared variable {v.Name}");
+
     }
 
     private void PushScope()
