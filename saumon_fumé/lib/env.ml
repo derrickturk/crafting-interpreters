@@ -1,36 +1,43 @@
-type t = {
-  frame: Value.t array;
-  parent: t option;
-}
+type t =
+  | Global of Value.t option array
+  | Local of Value.t array * t
 
 let global r =
   let open Resolver in
-  let open Value in
-  let frame = Array.make (slots r.global_frame) Nil in
-  { frame; parent = None }
+  let frame = Array.make (slots r.global_frame) None in
+  Global frame
 
-let expand e globals =
-  let global_slots = Resolver.slots globals in
-  let len = Array.length e.frame in
-  let gap = global_slots - len in
-  if gap > 0
-    then
-      let extra = Array.make gap Value.Nil in
-      { e with frame = Array.append e.frame extra }
-    else e
+(* TODO: make this safer somehow? *)
+let expand e globals = match e with
+  | Local _ -> e
+  | Global frame ->
+      let global_slots = Resolver.slots globals in
+      let len = Array.length frame in
+      let gap = global_slots - len in
+      if gap > 0
+        then
+          let extra = Array.make gap None in
+          Global (Array.append frame extra)
+        else e
 
 let rec read e var = match e, var with
-  | { frame; _ }, (_, 0, slot) ->
+  | Local (frame, _), (_, 0, slot) ->
+      Some frame.(slot)
+  | Local (_, parent), (name, n, slot) when n > 0 ->
+      read parent (name, n - 1, slot)
+  | Global frame, (_, 0, slot) ->
       frame.(slot)
-  | { parent = Some p; _ }, (item, n, slot) when n > 0 ->
-      read p (item, n - 1, slot)
   | _, (item, _, _) ->
       failwith ("internal error: bad lookup for " ^ item)
 
 let rec write e var v = match e, var with
-  | { frame; _ }, (_, 0, slot) ->
+  | Local (frame, _), (_, 0, slot) ->
       frame.(slot) <- v
-  | { parent = Some p; _ }, (item, n, slot) when n > 0 ->
-      write p (item, n - 1, slot) v
+  | Local (_, parent), (name, n, slot) when n > 0 ->
+      write parent (name, n - 1, slot) v
+  | Global frame, (_, 0, slot) ->
+      frame.(slot) <- Some v
   | _, (item, _, _) ->
       failwith ("internal error: bad lookup for " ^ item)
+
+let push e slots = Local (Array.make slots Value.Nil, e)

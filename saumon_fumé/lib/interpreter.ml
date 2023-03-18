@@ -73,7 +73,15 @@ let rec eval_expr env { item; loc } =
               loc;
             }
         end
-    | Var v -> Ok (Env.read env v.item)
+    | Var { item = (name, _, _) as var; loc } -> match Env.read env var with
+        | Some v -> Ok v
+        | None -> Error {
+            item = {
+              lexeme = None;
+              details = UndefinedVariable name;
+            };
+            loc;
+          }
 
 let exec_stmt env { item; _ } =
   let open Syntax.AsResolved in
