@@ -8,6 +8,7 @@ module SR = Syntax.AsResolved
 type var_state =
   | Declared
   | Defined
+  | Deferred
 
 (*
 type fn_kind =
@@ -22,6 +23,10 @@ type resolve_frame = {
 }
 
 let slots { slots; _ } = slots
+
+type resolve_result =
+  | Known of int * int * var_state
+  | Unknown of int * int
 
 let init_global = {
   slots = 0;
@@ -40,14 +45,24 @@ let is_global { parent; _ } = parent = None
 
 let has_local { locals; _ } name = StrMap.mem name locals
 
-let rec find_opt { parent; locals; _ } name =
-  let open Option_monad in
-  match StrMap.find_opt name locals with
-    | Some (slot, _) -> Some (0, slot)
-    | None ->
-        let* p = parent in
-        let+ (depth, slot) = find_opt p name in
-        (depth + 1, slot)
+let find_name frame name =
+  let rec go depth ({ slots; locals; parent } as f) name =
+    match StrMap.find_opt name locals with
+      | Some (slot, state) -> f, Known (depth, slot, state)
+      | None ->
+          match parent with
+            | Some p ->
+                begin match go (depth + 1) p name with
+                  | (_, (Known (_, _, _) as r)) ->
+                      f, r
+                  | (p', (Unknown (_, _) as r)) ->
+                      { f with parent = Some p' }, r
+                end
+            | None -> { f with
+                slots = slots + 1;
+                locals = StrMap.add name (slots, Deferred) locals;
+              }, Unknown (depth, slots)
+  in go 0 frame name
 
 let fail item loc =
   State_monad.modify (fun (f, errs) -> (f, { item; loc }::errs))
@@ -82,21 +97,18 @@ let define { item; _ } =
 let resolve { item; loc } =
   let open State_monad in
   let* (f, _) = get in
-  match find_opt f item with
-    | Some (depth, slot) -> return {
+  let (f', result) = find_name f item in
+  let* () = put_frame f' in
+  return begin match result with
+    | Known (depth, slot, _) -> {
         item = (item, depth, slot);
         loc;
       }
-    | None ->
-        let* () = fail
-          { Error.lexeme = None; details = UndefinedVariable item }
-          loc
-        in return {
-          (* ugly, but this will always be thrown away because an
-           *   error is produced *)
-          item = (item, -1, -1);
-          loc;
-        }
+    | Unknown (depth, slot) -> {
+        item = (item, depth, slot);
+        loc;
+      }
+  end
 
 let define_builtins names =
   let open State_monad in

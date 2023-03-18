@@ -1,6 +1,7 @@
 type var_state =
   | Declared
   | Defined
+  | Deferred
 
 type resolve_frame
 

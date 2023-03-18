@@ -10,5 +10,5 @@ fun isEven(n) {
 
 for (var i = 0; i < 10; i = i + 1) {
     if (isOdd(i))
-        print to_string(i) + " is odd";
+        print i;
 }
