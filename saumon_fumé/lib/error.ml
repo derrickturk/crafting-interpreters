@@ -1,5 +1,6 @@
 type details =
   | AlreadyDefined of string
+  | InvalidLValue of string
   | InvalidReturn
   | ParseExpected of string
   | TypeError of string
@@ -10,6 +11,7 @@ type details =
 
 let pprint_details = function
   | AlreadyDefined name -> "variable " ^ name ^ " already defined in scope"
+  | InvalidLValue what -> "invalid assignment target: " ^ what
   | InvalidReturn -> "return outside function or method body"
   | ParseExpected what -> "expected " ^ what
   | TypeError msg -> "type error: " ^ msg

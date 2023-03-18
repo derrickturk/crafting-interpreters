@@ -30,14 +30,34 @@ let rec read e var = match e, var with
   | _, (item, _, _) ->
       failwith ("internal error: bad lookup for " ^ item)
 
-let rec write e var v = match e, var with
+let rec define e var v = match e, var with
   | Local (frame, _), (_, 0, slot) ->
       frame.(slot) <- v
   | Local (_, parent), (name, n, slot) when n > 0 ->
-      write parent (name, n - 1, slot) v
+      define parent (name, n - 1, slot) v
   | Global frame, (_, 0, slot) ->
       frame.(slot) <- Some v
   | _, (item, _, _) ->
       failwith ("internal error: bad lookup for " ^ item)
 
+let rec assign e var v = match e, var with
+  | Local (frame, _), (_, 0, slot) ->
+      frame.(slot) <- v;
+      true
+  | Local (_, parent), (name, n, slot) when n > 0 ->
+      assign parent (name, n - 1, slot) v
+  | Global frame, (_, 0, slot) ->
+      begin match frame.(slot) with
+        | Some _ ->
+            frame.(slot) <- Some v;
+            true
+        | None -> false
+      end
+  | _, (item, _, _) ->
+      failwith ("internal error: bad lookup for " ^ item)
+
 let push e slots = Local (Array.make slots Value.Nil, e)
+
+let pop = function
+  | Global _ -> failwith "internal error: pop from global env"
+  | Local (_, parent) -> parent

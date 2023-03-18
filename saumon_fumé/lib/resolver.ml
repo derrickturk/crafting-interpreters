@@ -130,6 +130,10 @@ let rec resolve_expr { item; loc } =
         and+ e2' = resolve_expr e2
         in SR.BinaryOp (op, e1', e2')
     | SP.Var v -> let+ v' = resolve v in SR.Var v'
+    | SP.Assign (v, e) ->
+        let+ v' = resolve v
+        and+ e' = resolve_expr e in
+        SR.Assign (v', e')
   in { item = item'; loc }
 
 let resolve_stmt { item; loc } =

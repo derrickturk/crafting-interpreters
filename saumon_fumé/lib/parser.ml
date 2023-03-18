@@ -68,7 +68,27 @@ module Parser = struct
     let* lhs = expr_p p in
     go lhs
 
-  let rec expression p = equality p
+  let rec expression p = assignment p
+
+  and assignment p =
+    let* lhs: expr annot = equality p in
+    match match_token p Eq with
+      | None -> Some lhs
+      | Some tok ->
+          let* rhs = assignment p in
+          match lhs.item with
+            | Var v ->
+                Some { item = Assign (v, rhs); loc = lhs.loc }
+            | _ ->
+                let e = {
+                  item = {
+                    Error.lexeme = Some tok.item.lexeme;
+                    details = InvalidLValue (pprint_expr lhs);
+                  };
+                  loc = tok.loc;
+                } in
+                p.errors <- e::p.errors;
+                None
 
   and equality p = fold_binary_op p comparison
     (function | EqEq -> Some Eq | NotEq -> Some NotEq | _ -> None)

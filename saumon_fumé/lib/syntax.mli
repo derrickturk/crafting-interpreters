@@ -39,6 +39,7 @@ module type S = sig
     | UnaryOp of unary_op * expr annot
     | BinaryOp of binary_op * expr annot * expr annot
     | Var of var annot
+    | Assign of var annot * expr annot
 
   val pprint_expr: expr annot -> string
 

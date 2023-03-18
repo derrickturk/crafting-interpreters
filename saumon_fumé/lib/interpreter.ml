@@ -73,9 +73,22 @@ let rec eval_expr env { item; loc } =
               loc;
             }
         end
-    | Var { item = (name, _, _) as var; loc } -> match Env.read env var with
-        | Some v -> Ok v
-        | None -> Error {
+    | Var { item = (name, _, _) as var; loc } ->
+        begin match Env.read env var with
+          | Some v -> Ok v
+          | None -> Error {
+              item = {
+                lexeme = None;
+                details = UndefinedVariable name;
+              };
+              loc;
+            }
+        end
+    | Assign ({ item = (name, _, _) as var; loc}, e) ->
+        let* v = eval_expr env e in
+        if Env.assign env var v
+          then Ok v
+          else Error {
             item = {
               lexeme = None;
               details = UndefinedVariable name;
@@ -93,9 +106,9 @@ let exec_stmt env { item; _ } =
         let+ v = eval_expr env e in
         print_endline (Value.pprint v)
     | VarDecl (v, None) ->
-        Ok (Env.write env v.item Value.Nil)
+        Ok (Env.define env v.item Value.Nil)
     | VarDecl (v, Some init) ->
         let+ init' = eval_expr env init in
-        Env.write env v.item init'
+        Env.define env v.item init'
 
 let exec env = Result_monad.sequence (exec_stmt env)

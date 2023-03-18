@@ -49,6 +49,7 @@ module type S = sig
     | UnaryOp of unary_op * expr annot
     | BinaryOp of binary_op * expr annot * expr annot
     | Var of var annot
+    | Assign of var annot * expr annot
 
   val pprint_expr: expr annot -> string
 
@@ -76,6 +77,7 @@ with type var = Sp.var and type 'a annot = 'a Sp.annot = struct
     | UnaryOp of unary_op * expr annot
     | BinaryOp of binary_op * expr annot * expr annot
     | Var of var annot
+    | Assign of var annot * expr annot
 
   let rec pprint_expr' = function
     | Lit v -> Value.pprint v
@@ -85,8 +87,12 @@ with type var = Sp.var and type 'a annot = 'a Sp.annot = struct
     | BinaryOp(op, lhs, rhs) ->
         let lhs' = pprint_expr lhs in
         let rhs' = pprint_expr rhs in
-        Printf.sprintf "%s %s %s" lhs' (pprint_binary_op op) rhs'
+        Printf.sprintf "(%s %s %s)" lhs' (pprint_binary_op op) rhs'
     | Var v -> pprint_var v
+    | Assign (v, e) ->
+        let v' = pprint_var v in
+        let e' = pprint_expr e in
+        Printf.sprintf "(%s = %s)" v' e'
   and pprint_expr e = Sp.pprint_annot pprint_expr' e
 
   type stmt =
