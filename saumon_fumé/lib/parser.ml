@@ -13,6 +13,15 @@ module Parser = struct
 
   let init source = { input = Seq.memoize (L.lex source); errors = [] }
 
+  let is_eof p =
+    match p.input () with
+      | Nil -> true
+      | _ -> false
+
+  let check_token p kind = match p.input () with
+    | Cons (Ok tok, _) -> tok.item.kind == kind
+    | _ -> false
+
   let match_token p kind = match p.input () with
     | Cons (Ok tok, tl) when tok.item.kind == kind ->
         p.input <- tl;
@@ -155,6 +164,10 @@ module Parser = struct
         | Some tok -> fn_rest p tok
         | None -> match_kinds p fallback tl
 
+  let someify fn p = let+ ret = fn p in Some ret
+
+  let someify_rest fn p tok = let+ ret = fn p tok in Some ret
+
   let rec declaration p = match_kinds p statement [(L.Var, var_decl_rest)]
 
   and var_decl_rest p tok =
@@ -175,28 +188,109 @@ module Parser = struct
     Some { item = VarDecl (var, init); loc = tok.loc }
 
   and statement p = match_kinds p expression_statement
-    (* TODO!
     [ (L.If, if_else_rest)
     ; (L.While, while_rest)
     ; (L.For, for_rest)
-    *)
-    [ (L.Print, print_rest)
-    ]
+    ; (L.Print, print_rest)
     (*
     ; (L.Return, return_rest)
+    *)
     ; (L.LBrace, block_rest)
     ]
-    *)
 
   and expression_statement p =
     let* e = expression p in
     let* _ = require_kind p Semicolon "';'" in
     Some { item = Expr e; loc = e.loc }
 
+  and if_else_rest p tok =
+    let* _ = require_kind p LParen "'('" in
+    let* cond = expression p in
+    let* _ = require_kind p RParen "')'" in
+    let* sif = statement p in
+    let* selse = match match_token p Else with
+      | Some _ -> someify statement p
+      | None -> Some None
+    in
+    Some { item = IfElse (cond, sif, selse); loc = tok.loc }
+
+  and while_rest p tok =
+    let* _ = require_kind p LParen "'('" in
+    let* cond = expression p in
+    let* _ = require_kind p RParen "')'" in
+    let* body = statement p in
+    Some { item = While (cond, body); loc = tok.loc }
+
+  (* all my homies hate for loops
+   * nah but seriously this desugar-while-parsing idea is terrible;
+   * it "complects" parsing the concrete for syntax with the
+   * tree transformation to a while-loop *)
+  and for_rest p tok =
+    let* lparen = require_kind p LParen "'('" in
+    let* init = match_kinds p (someify expression_statement)
+      [ (L.Semicolon, fun _ _ -> Some None)
+      ; (L.Var, someify_rest var_decl_rest)
+      ]
+    in
+    let* cond = match match_token p Semicolon with
+      | Some _ -> Some None
+      | None ->
+          let* e = expression p in
+          let* _ = require_kind p Semicolon "';'" in
+          Some (Some e)
+    in
+    let* incr = match match_token p RParen with
+      | Some _ -> Some None
+      | None ->
+          let* e = expression p in
+          let* _ = require_kind p RParen "')'" in
+          Some (Some e)
+    in
+    let* body = statement p in
+    let body' = match incr with
+      | Some e -> {
+          item = Block
+            [ body
+            ; { item = Expr e; loc = e.loc }
+            ];
+          loc = body.loc
+        }
+      | None -> body
+    in
+    let cond' = match cond with
+      | Some e -> e
+      | None -> { item = Lit (Bool true); loc = lparen.loc }
+    in
+    let loop = {
+      item = While (cond', body');
+      loc = tok.loc;
+    } in
+    match init with
+      | Some s ->
+          Some {
+            item = Block [s; loop];
+            loc = s.loc;
+          }
+      | None -> Some loop
+
   and print_rest p tok =
     let* e = expression p in
     let* _ = require_kind p Semicolon "';'" in
     Some { item = Print e; loc = tok.loc }
+
+  and block_rest p tok =
+    let rec go stmts =
+      if not (check_token p RBrace) && not (is_eof p)
+        then
+          let* s = declaration p in
+          go (s::stmts)
+        else
+          let* _ = require_kind p RBrace "'}'" in
+          Some {
+            item = Block (List.rev stmts);
+            loc = tok.loc;
+          }
+    in go []
 
   let eof p = match p.input () with
     | Nil -> Some ()
@@ -215,11 +309,6 @@ module Parser = struct
         p.input <- tl;
         p.errors <- e::p.errors;
         None
-
-  let is_eof p =
-    match p.input () with
-      | Nil -> true
-      | _ -> false
 
   let rec recover p =
     match p.input () with
