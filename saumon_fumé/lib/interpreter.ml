@@ -122,9 +122,9 @@ let rec exec_stmt env { item; _ } =
         loop_while c s
     | Print e ->
         let+ v = eval_expr env e in
-        print_endline (Value.pprint v)
-    | Block stmts ->
-        let env' = Env.push env (* TODO: a number!!! *) 10 in
+        print_endline (Value.to_string v)
+    | Block (stmts, slots) ->
+        let env' = Env.push env slots in
         sequence (exec_stmt env') stmts
     | VarDecl (v, None) ->
         Ok (Env.define env v.item Value.Nil)

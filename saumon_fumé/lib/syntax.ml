@@ -34,12 +34,15 @@ module type Spec = sig
   type var
   val pprint_var: var -> string
 
+  type scope_info
+
   type 'a annot
   val pprint_annot: ('a -> string) -> 'a annot -> string
 end
 
 module type S = sig
   type var
+  type scope_info
   type 'a annot
 
   val pprint_var: var annot -> string
@@ -58,7 +61,7 @@ module type S = sig
     | IfElse of expr annot * stmt annot * stmt annot option 
     | While of expr annot * stmt annot
     | Print of expr annot
-    | Block of stmt annot list
+    | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
 
   val pprint_stmt: stmt annot -> string
@@ -69,9 +72,13 @@ module type S = sig
 end
 
 module Make (Sp: Spec): S
-with type var = Sp.var and type 'a annot = 'a Sp.annot = struct
+with type var = Sp.var
+and type scope_info = Sp.scope_info
+and type 'a annot = 'a Sp.annot = struct
   type var = Sp.var
   type 'a annot = 'a Sp.annot
+
+  type scope_info = Sp.scope_info
 
   let pprint_var = Sp.pprint_annot Sp.pprint_var
 
@@ -103,7 +110,7 @@ with type var = Sp.var and type 'a annot = 'a Sp.annot = struct
     | IfElse of expr annot * stmt annot * stmt annot option 
     | While of expr annot * stmt annot
     | Print of expr annot
-    | Block of stmt annot list
+    | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
 
   let rec pprint_stmt' = function
@@ -117,7 +124,7 @@ with type var = Sp.var and type 'a annot = 'a Sp.annot = struct
     | While (e, s) ->
         "while (" ^ pprint_expr e ^ ") " ^ pprint_stmt s
     | Print e -> "print " ^ pprint_expr e ^ ";"
-    | Block stmts ->
+    | Block (stmts, _) ->
         "{\n" ^ String.concat "\n" (List.map pprint_stmt stmts) ^ "\n}"
     | VarDecl (v, None) -> "var " ^ pprint_var v ^ ";"
     | VarDecl (v, Some e) -> "var " ^ pprint_var v ^ " = " ^ pprint_expr e ^ ";"
@@ -133,6 +140,8 @@ module AsParsed = Make (struct
   type var = string
   let pprint_var v = v
 
+  type scope_info = unit
+
   type 'a annot = 'a Located.t
   let pprint_annot = Located.pprint
 end)
@@ -140,6 +149,8 @@ end)
 module AsResolved = Make (struct
   type var = string * int * int
   let pprint_var (name, _, _) = name
+
+  type scope_info = int
 
   type 'a annot = 'a Located.t
   let pprint_annot = Located.pprint

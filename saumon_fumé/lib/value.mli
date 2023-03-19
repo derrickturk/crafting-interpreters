@@ -8,3 +8,5 @@ type t =
 val truthy: t -> bool
 
 val pprint: t -> string
+
+val to_string: t -> string

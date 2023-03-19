@@ -16,3 +16,7 @@ let pprint = function
   | Bool false -> "false"
   | Num f -> Printf.sprintf "%g" f
   | Str s -> Printf.sprintf "\"%s\"" s
+
+let to_string = function
+  | Str s -> s
+  | v -> pprint v

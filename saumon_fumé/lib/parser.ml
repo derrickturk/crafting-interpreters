@@ -249,10 +249,10 @@ module Parser = struct
     let* body = statement p in
     let body' = match incr with
       | Some e -> {
-          item = Block
+          item = Block (
             [ body
             ; { item = Expr e; loc = e.loc }
-            ];
+            ], ());
           loc = body.loc
         }
       | None -> body
@@ -268,7 +268,7 @@ module Parser = struct
     match init with
       | Some s ->
           Some {
-            item = Block [s; loop];
+            item = Block ([s; loop], ());
             loc = s.loc;
           }
       | None -> Some loop
@@ -287,7 +287,7 @@ module Parser = struct
         else
           let* _ = require_kind p RBrace "'}'" in
           Some {
-            item = Block (List.rev stmts);
+            item = Block (List.rev stmts, ());
             loc = tok.loc;
           }
     in go []

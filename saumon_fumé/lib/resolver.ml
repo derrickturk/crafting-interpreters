@@ -125,6 +125,11 @@ let resolve { item; loc } =
       }
   end
 
+let local_slots =
+  let open State_monad in
+  let* (f, _) = get in
+  return f.slots
+
 let define_builtins names =
   let open State_monad in
   let define_builtin n =
@@ -170,12 +175,12 @@ let rec resolve_stmt { item; loc } =
         in SR.While (c', body')
     | SP.Print e ->
         let+ e' = resolve_expr e in SR.Print e'
-    | SP.Block body ->
+    | SP.Block (body, ()) ->
         let* () = push_frame in
         let* body' = traverse resolve_stmt body in
-        (* TODO: tag the new block with the slot count *)
+        let* slots = local_slots in
         let* () = pop_frame in
-        return (SR.Block body')
+        return (SR.Block (body', slots))
     | SP.VarDecl (v, init) ->
         let* () = declare v in
         let* init' = match init with

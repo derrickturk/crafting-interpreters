@@ -22,6 +22,8 @@ module type Spec = sig
   type var
   val pprint_var: var -> string
 
+  type scope_info
+
   type 'a annot
   val pprint_annot: ('a -> string) -> 'a annot -> string
 
@@ -30,6 +32,7 @@ end
 
 module type S = sig
   type var
+  type scope_info
   type 'a annot
 
   val pprint_var: var annot -> string
@@ -48,7 +51,7 @@ module type S = sig
     | IfElse of expr annot * stmt annot * stmt annot option 
     | While of expr annot * stmt annot
     | Print of expr annot
-    | Block of stmt annot list
+    | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
 
   val pprint_stmt: stmt annot -> string
@@ -58,9 +61,17 @@ module type S = sig
   val pprint_prog: prog -> string
 end
 
-module Make (Sp: Spec): S with type var = Sp.var and type 'a annot = 'a Sp.annot
+module Make (Sp: Spec): S
+  with type var = Sp.var
+  and type scope_info = Sp.scope_info
+  and type 'a annot = 'a Sp.annot
 
-module AsParsed: S with type var = string and type 'a annot = 'a Located.t
+module AsParsed: S
+  with type var = string
+  and type scope_info = unit
+  and type 'a annot = 'a Located.t
 
 module AsResolved: S
-  with type var = (string * int * int) and type 'a annot = 'a Located.t
+  with type var = (string * int * int)
+  and type scope_info = int
+  and type 'a annot = 'a Located.t
