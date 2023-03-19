@@ -70,6 +70,21 @@ let fail item loc =
 let put_frame f =
   State_monad.modify (fun (_, errs) -> (f, errs))
 
+let push_frame =
+  let child_frame f = {
+      slots = 0;
+      locals = StrMap.empty;
+      parent = Some f;
+  } in
+  State_monad.modify (fun (f, errs) -> (child_frame f, errs))
+
+let pop_frame =
+  let parent_frame = function
+    | { parent = Some p; _ } -> p
+    | _ -> failwith "internal error: pop from global frame"
+  in
+  State_monad.modify (fun (f, errs) -> (parent_frame f, errs))
+
 let declare { item; loc } =
   let open State_monad in
   let* (f, _) = get in
@@ -136,13 +151,31 @@ let rec resolve_expr { item; loc } =
         SR.Assign (v', e')
   in { item = item'; loc }
 
-let resolve_stmt { item; loc } =
+let rec resolve_stmt { item; loc } =
   let open State_monad in
   let+ item' = match item with
     | SP.Expr e ->
         let+ e' = resolve_expr e in SR.Expr e'
+    | SP.IfElse (c, sif, selse) ->
+        let+ c' = resolve_expr c
+        and+ sif' = resolve_stmt sif
+        and+ selse' = match selse with
+          | Some s ->
+              let+ s' = resolve_stmt s in Some s'
+          | None -> return None
+        in SR.IfElse (c', sif', selse')
+    | SP.While (c, body) ->
+        let+ c' = resolve_expr c
+        and+ body' = resolve_stmt body
+        in SR.While (c', body')
     | SP.Print e ->
         let+ e' = resolve_expr e in SR.Print e'
+    | SP.Block body ->
+        let* () = push_frame in
+        let* body' = traverse resolve_stmt body in
+        (* TODO: tag the new block with the slot count *)
+        let* () = pop_frame in
+        return (SR.Block body')
     | SP.VarDecl (v, init) ->
         let* () = declare v in
         let* init' = match init with

@@ -96,15 +96,36 @@ let rec eval_expr env { item; loc } =
             loc;
           }
 
-let exec_stmt env { item; _ } =
+let rec exec_stmt env { item; _ } =
   let open Syntax.AsResolved in
   let open Result_monad in
+  let rec loop_while c s =
+    let* v = eval_expr env c in
+    if Value.truthy v
+      then
+        let* () = exec_stmt env s in
+        loop_while c s
+      else Ok ()
+  in
   match item with
     | Expr e ->
         let+ _ = eval_expr env e in ()
+    | IfElse (c, sif, selse) ->
+        let* v = eval_expr env c in
+        if Value.truthy v
+          then exec_stmt env sif
+          else begin match selse with
+            | Some s -> exec_stmt env s
+            | None -> Ok () 
+          end
+    | While (c, s) ->
+        loop_while c s
     | Print e ->
         let+ v = eval_expr env e in
         print_endline (Value.pprint v)
+    | Block stmts ->
+        let env' = Env.push env (* TODO: a number!!! *) 10 in
+        sequence (exec_stmt env') stmts
     | VarDecl (v, None) ->
         Ok (Env.define env v.item Value.Nil)
     | VarDecl (v, Some init) ->

@@ -55,7 +55,10 @@ module type S = sig
 
   type stmt =
     | Expr of expr annot
+    | IfElse of expr annot * stmt annot * stmt annot option 
+    | While of expr annot * stmt annot
     | Print of expr annot
+    | Block of stmt annot list
     | VarDecl of var annot * expr annot option
 
   val pprint_stmt: stmt annot -> string
@@ -97,12 +100,25 @@ with type var = Sp.var and type 'a annot = 'a Sp.annot = struct
 
   type stmt =
     | Expr of expr annot
+    | IfElse of expr annot * stmt annot * stmt annot option 
+    | While of expr annot * stmt annot
     | Print of expr annot
+    | Block of stmt annot list
     | VarDecl of var annot * expr annot option
 
   let rec pprint_stmt' = function
     | Expr e -> pprint_expr e ^ ";"
+    | IfElse (e, s1, s2) ->
+        let els = match s2 with
+          | None -> ""
+          | Some s -> " else " ^ pprint_stmt s
+        in
+        "if (" ^ pprint_expr e ^ ") " ^ pprint_stmt s1 ^ els
+    | While (e, s) ->
+        "while (" ^ pprint_expr e ^ ") " ^ pprint_stmt s
     | Print e -> "print " ^ pprint_expr e ^ ";"
+    | Block stmts ->
+        "{\n" ^ String.concat "\n" (List.map pprint_stmt stmts) ^ "\n}"
     | VarDecl (v, None) -> "var " ^ pprint_var v ^ ";"
     | VarDecl (v, Some e) -> "var " ^ pprint_var v ^ " = " ^ pprint_expr e ^ ";"
   and pprint_stmt s = Sp.pprint_annot pprint_stmt' s

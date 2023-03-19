@@ -175,7 +175,7 @@ module Parser = struct
     Some { item = VarDecl (var, init); loc = tok.loc }
 
   and statement p = match_kinds p expression_statement
-    (*
+    (* TODO!
     [ (L.If, if_else_rest)
     ; (L.While, while_rest)
     ; (L.For, for_rest)

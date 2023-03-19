@@ -45,7 +45,10 @@ module type S = sig
 
   type stmt =
     | Expr of expr annot
+    | IfElse of expr annot * stmt annot * stmt annot option 
+    | While of expr annot * stmt annot
     | Print of expr annot
+    | Block of stmt annot list
     | VarDecl of var annot * expr annot option
 
   val pprint_stmt: stmt annot -> string
