@@ -43,6 +43,7 @@ module type S = sig
     | BinaryOp of binary_op * expr annot * expr annot
     | Var of var annot
     | Assign of var annot * expr annot
+    | Call of expr annot * expr annot list
 
   val pprint_expr: expr annot -> string
 
@@ -53,6 +54,7 @@ module type S = sig
     | Print of expr annot
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
+    | FunDef of var annot * var annot list * stmt annot list
 
   val pprint_stmt: stmt annot -> string
 

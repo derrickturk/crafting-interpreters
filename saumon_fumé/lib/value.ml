@@ -3,6 +3,7 @@ type t =
   | Bool of bool
   | Num of float
   | Str of string
+  | Fn of string * int * (t list -> t)
   [@@deriving show]
 
 let truthy = function
@@ -16,6 +17,7 @@ let pprint = function
   | Bool false -> "false"
   | Num f -> Printf.sprintf "%g" f
   | Str s -> Printf.sprintf "\"%s\"" s
+  | Fn (name, _, _) -> Printf.sprintf "<function %s>" name
 
 let to_string = function
   | Str s -> s

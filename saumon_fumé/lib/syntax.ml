@@ -57,6 +57,7 @@ module type S = sig
     | BinaryOp of binary_op * expr annot * expr annot
     | Var of var annot
     | Assign of var annot * expr annot
+    | Call of expr annot * expr annot list
 
   val pprint_expr: expr annot -> string
 
@@ -67,6 +68,7 @@ module type S = sig
     | Print of expr annot
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
+    | FunDef of var annot * var annot list * stmt annot list
 
   val pprint_stmt: stmt annot -> string
 
@@ -92,6 +94,7 @@ and type 'a annot = 'a Sp.annot = struct
     | BinaryOp of binary_op * expr annot * expr annot
     | Var of var annot
     | Assign of var annot * expr annot
+    | Call of expr annot * expr annot list
 
   let rec pprint_expr' = function
     | Lit v -> Value.pprint v
@@ -107,6 +110,10 @@ and type 'a annot = 'a Sp.annot = struct
         let v' = pprint_var v in
         let e' = pprint_expr e in
         Printf.sprintf "(%s = %s)" v' e'
+    | Call (callee, args) ->
+        let callee' = pprint_expr callee in
+        let args' = String.concat ", " (List.map pprint_expr args) in
+        Printf.sprintf "(%s)(%s)" callee' args'
   and pprint_expr e = Sp.pprint_annot pprint_expr' e
 
   type stmt =
@@ -116,6 +123,7 @@ and type 'a annot = 'a Sp.annot = struct
     | Print of expr annot
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
+    | FunDef of var annot * var annot list * stmt annot list
 
   let rec pprint_stmt' = function
     | Expr e -> pprint_expr e ^ ";"
@@ -132,6 +140,11 @@ and type 'a annot = 'a Sp.annot = struct
         "{\n" ^ String.concat "\n" (List.map pprint_stmt stmts) ^ "\n}"
     | VarDecl (v, None) -> "var " ^ pprint_var v ^ ";"
     | VarDecl (v, Some e) -> "var " ^ pprint_var v ^ " = " ^ pprint_expr e ^ ";"
+    | FunDef (name, params, body) ->
+        let name' = pprint_var name in
+        let params' = String.concat ", " (List.map pprint_var params) in
+        let body' = String.concat "\n" (List.map pprint_stmt body) in
+        Printf.sprintf "%s (%s) {\n%s\n}" name' params' body'
   and pprint_stmt s = Sp.pprint_annot pprint_stmt' s
 
   type prog = stmt annot list
