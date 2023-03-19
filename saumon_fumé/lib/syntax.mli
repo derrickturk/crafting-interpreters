@@ -54,7 +54,7 @@ module type S = sig
     | Print of expr annot
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
-    | FunDef of var annot * var annot list * stmt annot list
+    | FunDef of var annot * var annot list * stmt annot list * scope_info
 
   val pprint_stmt: stmt annot -> string
 

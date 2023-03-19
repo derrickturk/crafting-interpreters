@@ -68,7 +68,7 @@ module type S = sig
     | Print of expr annot
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
-    | FunDef of var annot * var annot list * stmt annot list
+    | FunDef of var annot * var annot list * stmt annot list * scope_info
 
   val pprint_stmt: stmt annot -> string
 
@@ -123,7 +123,7 @@ and type 'a annot = 'a Sp.annot = struct
     | Print of expr annot
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
-    | FunDef of var annot * var annot list * stmt annot list
+    | FunDef of var annot * var annot list * stmt annot list * scope_info
 
   let rec pprint_stmt' = function
     | Expr e -> pprint_expr e ^ ";"
@@ -140,7 +140,7 @@ and type 'a annot = 'a Sp.annot = struct
         "{\n" ^ String.concat "\n" (List.map pprint_stmt stmts) ^ "\n}"
     | VarDecl (v, None) -> "var " ^ pprint_var v ^ ";"
     | VarDecl (v, Some e) -> "var " ^ pprint_var v ^ " = " ^ pprint_expr e ^ ";"
-    | FunDef (name, params, body) ->
+    | FunDef (name, params, body, _) ->
         let name' = pprint_var name in
         let params' = String.concat ", " (List.map pprint_var params) in
         let body' = String.concat "\n" (List.map pprint_stmt body) in

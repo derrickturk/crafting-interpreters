@@ -154,6 +154,10 @@ let rec resolve_expr { item; loc } =
         let+ v' = resolve v
         and+ e' = resolve_expr e in
         SR.Assign (v', e')
+    | SP.Call (e, args) ->
+        let+ e' = resolve_expr e
+        and+ args' = traverse resolve_expr args in
+        SR.Call (e', args')
   in { item = item'; loc }
 
 let rec resolve_stmt { item; loc } =
@@ -191,6 +195,17 @@ let rec resolve_stmt { item; loc } =
         let* () = define v in
         let* v' = resolve v in
         return (SR.VarDecl (v', init'))
+    | SP.FunDef (v, params, body, ()) ->
+        let* () = declare v in
+        let* () = push_frame in
+        let* () = sequence define params in
+        let* params' = traverse resolve params in
+        let* body' = traverse resolve_stmt body in
+        let* slots = local_slots in
+        let* () = pop_frame in
+        let* () = define v in
+        let* v' = resolve v in
+        return (SR.FunDef (v', params', body', slots))
   in { item = item'; loc }
 
 let resolve prog builtins =

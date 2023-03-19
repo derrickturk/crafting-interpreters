@@ -105,6 +105,33 @@ let rec eval_expr env { item; loc } =
             };
             loc;
           }
+    | Call (callee, args) ->
+        let* fn = eval_expr env callee in
+        match fn with
+          | Fn (name, slots, f) ->
+              let n_args = List.length args in
+              if n_args != slots
+                then
+                  let msg = Printf.sprintf
+                    "function %s expected %d arguments; received %d"
+                    name slots n_args
+                  in Error {
+                    item = {
+                      lexeme = None;
+                      details = TypeError msg;
+                    };
+                    loc = callee.loc;
+                  }
+                else
+                  let* args' = traverse (eval_expr env) args in
+                  f args'
+          | _ -> Error {
+              item = {
+                lexeme = None;
+                details = TypeError "attempt to call non-callable value";
+              };
+              loc = callee.loc;
+            }
 
 let rec exec_stmt env { item; _ } =
   let open Syntax.AsResolved in
@@ -141,5 +168,14 @@ let rec exec_stmt env { item; _ } =
     | VarDecl (v, Some init) ->
         let+ init' = eval_expr env init in
         Env.define env v.item init'
+    | FunDef ({ item = (name, _, _); _ } as v, params, body, slots) ->
+        let fn args =
+          let env' = Env.push env slots in
+          List.iter2 (fun p a -> Env.define env' p.item a) params args;
+          let* () = sequence (exec_stmt env') body in
+          Ok Value.Nil
+        in
+        Env.define env v.item (Value.Fn (name, List.length params, fn));
+        Ok ()
 
 let exec env = Result_monad.sequence (exec_stmt env)

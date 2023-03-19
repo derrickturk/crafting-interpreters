@@ -3,7 +3,7 @@ type t =
   | Bool of bool
   | Num of float
   | Str of string
-  | Fn of string * int * (t list -> t)
+  | Fn of string * int * (t list -> (t, Error.t) result)
   [@@deriving show]
 
 let truthy = function
