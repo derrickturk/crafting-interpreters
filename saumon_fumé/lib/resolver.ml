@@ -41,8 +41,6 @@ type t = {
 
 let is_global { parent; _ } = parent = None
 
-let has_local { locals; _ } name = StrMap.mem name locals
-
 let find_name frame name =
   let rec go depth ({ slots; locals; parent; _ } as f) name =
     match StrMap.find_opt name locals with
@@ -84,17 +82,33 @@ let pop_frame =
   in
   State_monad.modify (fun (f, errs) -> (parent_frame f, errs))
 
+(* TODO: I don't think I've factored any of this correctly, at all,
+ *   as evidenced by the fact that I never seem to actually match
+ *   on the var_state variants *)
+
 let declare { item; loc } =
   let open State_monad in
   let* (f, _) = get in
-  if not (is_global f) && has_local f item
-    then fail
-      { Error.lexeme = None; details = AlreadyDefined item }
-      loc
-    else put_frame { f with
-      slots = f.slots + 1;
-      locals = StrMap.add item (f.slots, Declared) f.locals;
-    }
+  if is_global f
+    then match StrMap.find_opt item f.locals with
+      | Some (n, _) ->
+          put_frame { f with
+            locals = StrMap.add item (n, Declared) f.locals;
+          }
+      | None ->
+          put_frame { f with
+            slots = f.slots + 1;
+            locals = StrMap.add item (f.slots, Declared) f.locals;
+          }
+    else match StrMap.find_opt item f.locals with
+      | Some _ -> fail
+          { Error.lexeme = None; details = AlreadyDefined item }
+          loc
+      | None ->
+          put_frame { f with
+            slots = f.slots + 1;
+            locals = StrMap.add item (f.slots, Declared) f.locals;
+          }
 
 let define { item; _ } =
   let open State_monad in

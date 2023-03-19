@@ -110,13 +110,13 @@ let rec eval_expr env { item; loc } =
     | Call (callee, args) ->
         let* fn = eval_expr env callee in
         match fn with
-          | Fn (name, slots, f) ->
+          | Fn (name, arity, f) ->
               let n_args = List.length args in
-              if n_args != slots
+              if n_args != arity
                 then
                   let msg = Printf.sprintf
                     "function %s expected %d arguments; received %d"
-                    name slots n_args
+                    name arity n_args
                   in Error {
                     item = {
                       lexeme = None;
