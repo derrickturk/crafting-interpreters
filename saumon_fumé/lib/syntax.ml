@@ -17,6 +17,8 @@ type binary_op =
   | LtEq
   | Gt
   | GtEq
+  | And
+  | Or
 
 let pprint_binary_op = function
   | Add -> "+"
@@ -29,6 +31,8 @@ let pprint_binary_op = function
   | LtEq -> "<="
   | Gt -> ">"
   | GtEq -> ">="
+  | And -> "and"
+  | Or -> "or"
 
 module type Spec = sig
   type var

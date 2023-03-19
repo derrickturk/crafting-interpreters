@@ -15,6 +15,8 @@ type binary_op =
   | LtEq
   | Gt
   | GtEq
+  | And
+  | Or
 
 val pprint_binary_op: binary_op -> string
 

@@ -73,6 +73,16 @@ let rec eval_expr env { item; loc } =
               loc;
             }
         end
+    | BinaryOp (And, e1, e2) ->
+        let* lhs = eval_expr env e1 in
+        if Value.truthy lhs
+          then eval_expr env e2
+          else Ok lhs
+    | BinaryOp (Or, e1, e2) ->
+        let* lhs = eval_expr env e1 in
+        if Value.truthy lhs
+          then Ok lhs
+          else eval_expr env e2
     | Var { item = (name, _, _) as var; loc } ->
         begin match Env.read env var with
           | Some v -> Ok v

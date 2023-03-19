@@ -80,7 +80,7 @@ module Parser = struct
   let rec expression p = assignment p
 
   and assignment p =
-    let* lhs: expr annot = equality p in
+    let* lhs: expr annot = logic_or p in
     match match_token p Eq with
       | None -> Some lhs
       | Some tok ->
@@ -98,6 +98,12 @@ module Parser = struct
                 } in
                 p.errors <- e::p.errors;
                 None
+
+  and logic_or p = fold_binary_op p logic_and
+    (function | Or -> Some Or | _ -> None)
+
+  and logic_and p = fold_binary_op p equality
+    (function | And -> Some And | _ -> None)
 
   and equality p = fold_binary_op p comparison
     (function | EqEq -> Some Eq | NotEq -> Some NotEq | _ -> None)
