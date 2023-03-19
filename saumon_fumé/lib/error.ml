@@ -3,6 +3,7 @@ type details =
   | InvalidLValue of string
   | InvalidReturn
   | ParseExpected of string
+  | TooManyArgs
   | TypeError of string
   | UndefinedVariable of string
   | UnexpectedCharacter of char
@@ -14,6 +15,7 @@ let pprint_details = function
   | InvalidLValue what -> "invalid assignment target: " ^ what
   | InvalidReturn -> "return outside function or method body"
   | ParseExpected what -> "expected " ^ what
+  | TooManyArgs -> "more than 255 arguments or parameters"
   | TypeError msg -> "type error: " ^ msg
   | UndefinedVariable name -> "undefined variable " ^ name
   | UnexpectedCharacter c -> "unexpected character " ^ String.make 1 c

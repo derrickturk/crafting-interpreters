@@ -3,6 +3,7 @@ type details =
   | InvalidLValue of string
   | InvalidReturn
   | ParseExpected of string
+  | TooManyArgs
   | TypeError of string
   | UndefinedVariable of string
   | UnexpectedCharacter of char

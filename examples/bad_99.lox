@@ -1,0 +1,3 @@
+fun f() { print x; }
+var x = 99;
+f();

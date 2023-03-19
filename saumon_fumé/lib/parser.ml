@@ -131,7 +131,45 @@ module Parser = struct
       | Some (op, tok) ->
           let+ rhs = unary p in
           { item = UnaryOp (op, rhs); loc = tok.loc; }
-      | None -> primary p
+      | None -> call p
+
+  and call p =
+    let rec go p e =
+      match match_token p LParen with
+        | Some tok ->
+            let* e' = call_rest p e tok in
+            go p e'
+        | None -> Some e
+    in
+    let* e = primary p in go p e
+
+  and call_rest p callee tok =
+    let rec go args =
+      match match_token p RParen with
+        | Some _ -> Some { item = Call (callee, []); loc = tok.loc }
+        | None ->
+            let* a = expression p in
+            match match_token p Comma with
+              | Some _ -> go (a::args)
+              | None ->
+                  let* _ = require_kind p RParen "')'" in
+                  if List.length args > 255
+                    then
+                      let e = {
+                        item = {
+                          Error.lexeme = Some tok.item.lexeme;
+                          details = TooManyArgs;
+                        };
+                        loc = tok.loc;
+                      } in
+                      p.errors <- e::p.errors;
+                      None
+                    else
+                      Some {
+                        item = Call (callee, List.rev args);
+                        loc = tok.loc;
+                      }
+    in go []
 
   and primary p =
     let literal =
@@ -174,7 +212,10 @@ module Parser = struct
 
   let someify_rest fn p tok = let+ ret = fn p tok in Some ret
 
-  let rec declaration p = match_kinds p statement [(L.Var, var_decl_rest)]
+  let rec declaration p = match_kinds p statement
+    [ (L.Var, var_decl_rest)
+    ; (L.Fun, fun_or_method_def_rest)
+    ]
 
   and var_decl_rest p tok =
     let is_ident = function | L.Ident _ -> true | _ -> false in
@@ -193,14 +234,65 @@ module Parser = struct
     let* _ = require_kind p Semicolon "';'" in
     Some { item = VarDecl (var, init); loc = tok.loc }
 
+  and fun_or_method_def_rest p tok =
+    let ty = match tok.item.kind with
+      | Fun -> "function"
+      | _ -> failwith "internal error: bad token type for fun/method def"
+    in
+    let name_var = function
+      | L.Ident name -> Some name
+      | _ -> None
+    in
+    let var p =
+      let+ (name, name_tok) = match_token_opt p name_var in
+      { item = name; loc = name_tok.loc }
+    in
+    let* name = var p in
+    let* _ = require_kind p LParen ("'(' after " ^ ty ^ " name") in
+    let rec go_p params =
+      match match_token p RParen with
+        | Some _ -> Some (List.rev params)
+        | None ->
+            let* param = var p in
+            match match_token p Comma with
+              | Some _ -> go_p (param::params)
+              | None ->
+                  let* _ = require_kind p RParen "')'" in
+                  if List.length params > 255
+                    then
+                      let e = {
+                        item = {
+                          Error.lexeme = Some tok.item.lexeme;
+                          details = TooManyArgs;
+                        };
+                        loc = tok.loc;
+                      } in
+                      p.errors <- e::p.errors;
+                      None
+                    else
+                      Some (List.rev params)
+    in
+    let* params = go_p [] in
+    let* lbrace = require_kind p LBrace ("'{' before " ^ ty ^ " body") in
+    let rec go_b stmts =
+      if not (check_token p RBrace) && not (is_eof p)
+        then
+          let* s = declaration p in
+          go_b (s::stmts)
+        else
+          let* _ = require_kind p RBrace "'}'" in
+          Some (List.rev stmts)
+    in
+    let* body = go_b [] in
+    Some { item = FunDef (name, params, body, ()); loc = lbrace.loc }
+
+
   and statement p = match_kinds p expression_statement
     [ (L.If, if_else_rest)
     ; (L.While, while_rest)
     ; (L.For, for_rest)
     ; (L.Print, print_rest)
-    (*
     ; (L.Return, return_rest)
-    *)
     ; (L.LBrace, block_rest)
     ]
 
@@ -283,6 +375,11 @@ module Parser = struct
     let* e = expression p in
     let* _ = require_kind p Semicolon "';'" in
     Some { item = Print e; loc = tok.loc }
+
+  and return_rest p tok =
+    let* e = expression p in
+    let* _ = require_kind p Semicolon "';'" in
+    Some { item = Return e; loc = tok.loc }
 
   and block_rest p tok =
     let rec go stmts =
