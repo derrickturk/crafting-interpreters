@@ -145,31 +145,30 @@ module Parser = struct
 
   and call_rest p callee tok =
     let rec go args =
-      match match_token p RParen with
-        | Some _ -> Some { item = Call (callee, []); loc = tok.loc }
-        | None ->
-            let* a = expression p in
-            match match_token p Comma with
-              | Some _ -> go (a::args)
-              | None ->
-                  let* _ = require_kind p RParen "')'" in
-                  if List.length args > 255
-                    then
-                      let e = {
-                        item = {
-                          Error.lexeme = Some tok.item.lexeme;
-                          details = TooManyArgs;
-                        };
-                        loc = tok.loc;
-                      } in
-                      p.errors <- e::p.errors;
-                      None
-                    else
-                      Some {
-                        item = Call (callee, List.rev args);
-                        loc = tok.loc;
-                      }
-    in go []
+      let* a = expression p in
+      match match_token p Comma with
+        | Some _ ->
+            go (a::args)
+        | None -> Some (List.rev (a::args))
+    in
+    let* args = if check_token p RParen
+      then Some []
+      else go []
+    in
+    let* _ = require_kind p RParen "')'" in
+    if List.length args > 255
+      then
+        let e = {
+          item = {
+            Error.lexeme = Some tok.item.lexeme;
+            details = TooManyArgs;
+          };
+          loc = tok.loc;
+        } in
+        p.errors <- e::p.errors;
+        None
+      else
+          Some { item = Call (callee, args); loc = tok.loc }
 
   and primary p =
     let literal =
@@ -250,29 +249,16 @@ module Parser = struct
     let* name = var p in
     let* _ = require_kind p LParen ("'(' after " ^ ty ^ " name") in
     let rec go_p params =
-      match match_token p RParen with
-        | Some _ -> Some (List.rev params)
-        | None ->
-            let* param = var p in
-            match match_token p Comma with
-              | Some _ -> go_p (param::params)
-              | None ->
-                  let* _ = require_kind p RParen "')'" in
-                  if List.length params > 255
-                    then
-                      let e = {
-                        item = {
-                          Error.lexeme = Some tok.item.lexeme;
-                          details = TooManyArgs;
-                        };
-                        loc = tok.loc;
-                      } in
-                      p.errors <- e::p.errors;
-                      None
-                    else
-                      Some (List.rev params)
+      let* param = var p in
+      match match_token p Comma with
+        | Some _ -> go_p (param::params)
+        | None -> Some (List.rev (param::params))
     in
-    let* params = go_p [] in
+    let* params = if check_token p RParen
+      then Some []
+      else go_p []
+    in
+    let* _ = require_kind p RParen "')'" in
     let* lbrace = require_kind p LBrace ("'{' before " ^ ty ^ " body") in
     let rec go_b stmts =
       if not (check_token p RBrace) && not (is_eof p)
@@ -284,7 +270,19 @@ module Parser = struct
           Some (List.rev stmts)
     in
     let* body = go_b [] in
-    Some { item = FunDef (name, params, body, ()); loc = lbrace.loc }
+    if List.length params > 255
+      then
+        let e = {
+          item = {
+            Error.lexeme = Some tok.item.lexeme;
+            details = TooManyArgs;
+          };
+          loc = tok.loc;
+        } in
+        p.errors <- e::p.errors;
+        None
+      else
+        Some { item = FunDef (name, params, body, ()); loc = lbrace.loc }
 
 
   and statement p = match_kinds p expression_statement
