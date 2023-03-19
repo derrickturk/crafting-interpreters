@@ -10,15 +10,13 @@ type var_state =
   | Defined
   | Deferred
 
-(*
 type fn_kind =
   | Function
-*)
 
 type resolve_frame = {
   slots: int;
   locals: (int * var_state) StrMap.t;
-  (* kind: fn_kind option; *)
+  kind: fn_kind option;
   parent: resolve_frame option;
 }
 
@@ -31,7 +29,7 @@ type resolve_result =
 let init_global = {
   slots = 0;
   locals = StrMap.empty;
-  (* kind = None; *)
+  kind = None;
   parent = None;
 }
 
@@ -46,7 +44,7 @@ let is_global { parent; _ } = parent = None
 let has_local { locals; _ } name = StrMap.mem name locals
 
 let find_name frame name =
-  let rec go depth ({ slots; locals; parent } as f) name =
+  let rec go depth ({ slots; locals; parent; _ } as f) name =
     match StrMap.find_opt name locals with
       | Some (slot, state) -> f, Known (depth, slot, state)
       | None ->
@@ -70,10 +68,11 @@ let fail item loc =
 let put_frame f =
   State_monad.modify (fun (_, errs) -> (f, errs))
 
-let push_frame =
+let push_frame kind =
   let child_frame f = {
       slots = 0;
       locals = StrMap.empty;
+      kind;
       parent = Some f;
   } in
   State_monad.modify (fun (f, errs) -> (child_frame f, errs))
@@ -130,6 +129,11 @@ let local_slots =
   let* (f, _) = get in
   return f.slots
 
+let local_kind =
+  let open State_monad in
+  let* (f, _) = get in
+  return f.kind
+
 let define_builtins names =
   let open State_monad in
   let define_builtin n =
@@ -179,8 +183,18 @@ let rec resolve_stmt { item; loc } =
         in SR.While (c', body')
     | SP.Print e ->
         let+ e' = resolve_expr e in SR.Print e'
+    | SP.Return e ->
+        let* kind = local_kind in
+        let* () = match kind with
+          | Some Function -> return ()
+          | _ -> fail {
+              Error.lexeme = Some "return";
+              details = InvalidReturn;
+            } loc
+        in
+        let+ e' = resolve_expr e in SR.Return e'
     | SP.Block (body, ()) ->
-        let* () = push_frame in
+        let* () = push_frame None in
         let* body' = traverse resolve_stmt body in
         let* slots = local_slots in
         let* () = pop_frame in
@@ -197,7 +211,7 @@ let rec resolve_stmt { item; loc } =
         return (SR.VarDecl (v', init'))
     | SP.FunDef (v, params, body, ()) ->
         let* () = declare v in
-        let* () = push_frame in
+        let* () = push_frame (Some Function) in
         let* () = sequence define params in
         let* params' = traverse resolve params in
         let* body' = traverse resolve_stmt body in

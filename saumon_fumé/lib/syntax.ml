@@ -66,6 +66,7 @@ module type S = sig
     | IfElse of expr annot * stmt annot * stmt annot option 
     | While of expr annot * stmt annot
     | Print of expr annot
+    | Return of expr annot
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
     | FunDef of var annot * var annot list * stmt annot list * scope_info
@@ -121,6 +122,7 @@ and type 'a annot = 'a Sp.annot = struct
     | IfElse of expr annot * stmt annot * stmt annot option 
     | While of expr annot * stmt annot
     | Print of expr annot
+    | Return of expr annot
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
     | FunDef of var annot * var annot list * stmt annot list * scope_info
@@ -136,6 +138,7 @@ and type 'a annot = 'a Sp.annot = struct
     | While (e, s) ->
         "while (" ^ pprint_expr e ^ ") " ^ pprint_stmt s
     | Print e -> "print " ^ pprint_expr e ^ ";"
+    | Return e -> "return " ^ pprint_expr e ^ ";"
     | Block (stmts, _) ->
         "{\n" ^ String.concat "\n" (List.map pprint_stmt stmts) ^ "\n}"
     | VarDecl (v, None) -> "var " ^ pprint_var v ^ ";"

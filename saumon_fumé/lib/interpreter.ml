@@ -1,5 +1,7 @@
 open Located
 
+exception RetExn of Value.t
+
 let rec eval_expr env { item; loc } =
   let open Syntax in
   let open Syntax.AsResolved in
@@ -160,6 +162,9 @@ let rec exec_stmt env { item; _ } =
     | Print e ->
         let+ v = eval_expr env e in
         print_endline (Value.to_string v)
+    | Return e ->
+        let+ v = eval_expr env e in
+        raise (RetExn v)
     | Block (stmts, slots) ->
         let env' = Env.push env slots in
         sequence (exec_stmt env') stmts
@@ -172,8 +177,11 @@ let rec exec_stmt env { item; _ } =
         let fn args =
           let env' = Env.push env slots in
           List.iter2 (fun p a -> Env.define env' p.item a) params args;
-          let* () = sequence (exec_stmt env') body in
-          Ok Value.Nil
+          try
+            let* () = sequence (exec_stmt env') body in
+            Ok Value.Nil
+          with
+            | RetExn v -> Ok v
         in
         Env.define env v.item (Value.Fn (name, List.length params, fn));
         Ok ()
