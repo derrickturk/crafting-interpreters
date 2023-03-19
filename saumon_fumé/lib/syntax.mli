@@ -28,8 +28,6 @@ module type Spec = sig
 
   type 'a annot
   val pprint_annot: ('a -> string) -> 'a annot -> string
-
-  (* TODO: fndef/block slot-count annot type; either () or int *)
 end
 
 module type S = sig
