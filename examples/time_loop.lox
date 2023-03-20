@@ -1,9 +1,9 @@
 var N_ITER = 100;
-var total_millis = 0;
+var total_seconds = 0;
 var then = clock();
 for (var i = 0; i < N_ITER; i = i + 1) {
     var now = clock();
-    total_millis = total_millis + (now - then);
+    total_seconds = total_seconds + (now - then);
     then = now;
 }
-print "avg " + to_string(total_millis / N_ITER * 1000) + " ns per loop";
+print "avg " + to_string(total_seconds / N_ITER * 1000000) + " ns per loop";
