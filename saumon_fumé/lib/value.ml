@@ -15,7 +15,7 @@ let pprint = function
   | Nil -> "nil"
   | Bool true -> "true"
   | Bool false -> "false"
-  | Num f -> Printf.sprintf "%g" f
+  | Num f -> Printf.sprintf "%g" f (* TODO: nope, scientific is bad *)
   | Str s -> Printf.sprintf "\"%s\"" s
   | Fn (name, _, _) -> Printf.sprintf "<function %s>" name
 

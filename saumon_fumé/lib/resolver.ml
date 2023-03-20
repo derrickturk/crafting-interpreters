@@ -148,14 +148,14 @@ let local_kind =
   let* (f, _) = get in
   return f.kind
 
-let define_builtins names =
+let define_builtins builtins =
   let open State_monad in
-  let define_builtin n =
-    let v = { item = n; loc = BuiltIns } in
+  let define_builtin (name, _) =
+    let v = { item = name; loc = BuiltIns } in
     let* () = define v in
     resolve v
   in
-  traverse define_builtin names
+  traverse define_builtin builtins
 
 let rec resolve_expr { item; loc } =
   let open State_monad in

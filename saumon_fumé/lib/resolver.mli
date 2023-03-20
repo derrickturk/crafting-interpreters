@@ -8,7 +8,7 @@ type t = {
 
 val slots: resolve_frame -> int
 
-val resolve: Syntax.AsParsed.prog -> string list -> (t, Error.t list) result
+val resolve: Syntax.AsParsed.prog -> Builtin.t list -> (t, Error.t list) result
 
 val resolve_incremental: resolve_frame
   -> Syntax.AsParsed.prog

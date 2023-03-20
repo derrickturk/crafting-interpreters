@@ -1,7 +1,6 @@
 type t
 
-(* TODO: builtins! *)
-val global: Resolver.t -> t
+val global: Resolver.t -> Builtin.t list -> t
 
 val expand: t -> Resolver.resolve_frame -> t
 

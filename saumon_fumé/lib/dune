@@ -1,3 +1,4 @@
 (library
  (name saumon_fume)
+ (libraries unix)
  (preprocess (pps ppx_deriving.show)))

@@ -2,11 +2,6 @@ type t =
   | Global of Value.t option array
   | Local of Value.t array * t
 
-let global r =
-  let open Resolver in
-  let frame = Array.make (slots r.global_frame) None in
-  Global frame
-
 (* TODO: make this safer somehow? *)
 let expand e globals = match e with
   | Local _ -> e
@@ -61,3 +56,12 @@ let push e slots = Local (Array.make slots Value.Nil, e)
 let pop = function
   | Global _ -> failwith "internal error: pop from global env"
   | Local (_, parent) -> parent
+
+let global r builtins =
+  let open Located in
+  let open Resolver in
+  let frame = Array.make (slots r.global_frame) None in
+  let e = Global frame in
+  List.iter2
+    (fun { item = var; _ } (_, v) -> define e var v) r.builtins builtins;
+  e

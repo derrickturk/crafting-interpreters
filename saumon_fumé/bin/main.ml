@@ -8,13 +8,12 @@ let print_errors es =
 
 let run_interactive () =
   let no_errors = ref true in
-  (* TODO: builtins *)
-  let resolved = match Resolver.resolve [] [] with
+  let resolved = match Resolver.resolve [] Builtin.builtins with
     | Ok r -> r
     | _ -> failwith "internal error: bultin resolve failed" 
   in
   let global_frame = ref resolved.global_frame in
-  let env = ref (Env.global resolved) in
+  let env = ref (Env.global resolved Builtin.builtins) in
   let run_line line =
     let open Interpreter in
     let open Parser in
@@ -56,8 +55,8 @@ let run_file path =
   let open Result_monad in
   let run_impl src =
     let* prog = parse src in
-    let* resolved = resolve prog [] in
-    let env = Env.global resolved in
+    let* resolved = resolve prog Builtin.builtins in
+    let env = Env.global resolved Builtin.builtins in
     Result.map_error (fun e -> [e]) (exec env resolved.program)
   in
   match run_impl src with
