@@ -11,7 +11,7 @@ internal record class Builtin(string Name, int Arity,
 
     public static Builtin[] BuiltinFunctions = new Builtin[] {
         new Builtin("clock", 0,
-          (_) => (double)DateTime.Now.Ticks / TimeSpan.TicksPerSecond),
+          (_) => (new TimeSpan(DateTime.Now.Ticks)).TotalSeconds),
         new Builtin("read_line", 0,
           (_) => System.Console.ReadLine()),
         new Builtin("to_string", 1,
