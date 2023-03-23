@@ -34,12 +34,13 @@ impl Display for Error {
 impl error::Error for Error { }
 
 /// The details of what went wrong
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum ErrorDetails {
     ParseExpected(&'static str),
+    UndefinedVariable(String),
     UnexpectedCharacter(char),
     UnterminatedStrLit,
-    TypeError(&'static str), // TODO: we could make this WAY more structured
+    TypeError(&'static str),
 }
 
 impl Display for ErrorDetails {
@@ -47,6 +48,8 @@ impl Display for ErrorDetails {
         match self {
             ErrorDetails::ParseExpected(expected) =>
                 write!(f, "expected {}", expected),
+            ErrorDetails::UndefinedVariable(var) =>
+                write!(f, "undefined variable {}", var),
             ErrorDetails::UnexpectedCharacter(c) =>
                 write!(f, "unexpected character {}", c),
             ErrorDetails::UnterminatedStrLit =>
