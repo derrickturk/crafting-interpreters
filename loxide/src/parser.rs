@@ -30,7 +30,7 @@ macro_rules! match_token {
 
 macro_rules! fold_bin_op {
     ($name:ident, $parser:ident $(,$p:pat)*) => {
-        fn $name(&mut self) -> Option<Expr> {
+        fn $name(&mut self) -> Option<Expr<String>> {
             let mut lhs = self.$parser()?;
             while let Some(tok) = match_token!(self, $($p),*) {
                 let rhs = self.$parser()?;
@@ -83,7 +83,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         }
     }
 
-    fn expression(&mut self) -> Option<Expr> {
+    fn expression(&mut self) -> Option<Expr<String>> {
         self.equality()
     }
 
@@ -93,7 +93,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
     fold_bin_op!(term, factor, TokenKind::Plus | TokenKind::Minus);
     fold_bin_op!(factor, unary, TokenKind::Star | TokenKind::Slash);
 
-    fn unary(&mut self) -> Option<Expr> {
+    fn unary(&mut self) -> Option<Expr<String>> {
         if let Some(tok) =
           match_token!(self, TokenKind::Not | TokenKind::Minus) {
             let rhs = self.unary()?;
@@ -104,7 +104,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         }
     }
 
-    fn primary(&mut self) -> Option<Expr> {
+    fn primary(&mut self) -> Option<Expr<String>> {
         if let Some(tok) = match_token!(self,
           TokenKind::Nil | TokenKind::True | TokenKind::False |
           TokenKind::StrLit(_) | TokenKind::NumLit(_)) {
@@ -205,7 +205,7 @@ fn token_literal(token: &Token<'_>) -> Option<Value> {
 
 #[inline]
 pub fn parse_expr<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
-  tokens: I) -> Result<Expr, ErrorBundle> {
+  tokens: I) -> Result<Expr<String>, ErrorBundle> {
     let mut p = Parser::new(tokens);
     if let Some(e) = p.expression() {
         if let Some(()) = p.eof() {

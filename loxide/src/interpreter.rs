@@ -14,7 +14,7 @@ macro_rules! type_error {
     };
 }
 
-pub fn eval_expr(expr: &Expr) -> error::Result<Value> {
+pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
     match expr {
         Expr::Literal(v, _) => Ok(v.clone()),
 
@@ -108,5 +108,7 @@ pub fn eval_expr(expr: &Expr) -> error::Result<Value> {
                 _ => Err(type_error!(*loc, ">=", "operands must be numbers")),
             }
         },
+
+        _ => todo!("about to get real SON!"),
     }
 }

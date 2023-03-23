@@ -57,19 +57,46 @@ impl fmt::Display for BinOp {
 
 /// A Lox expression
 #[derive(Clone, Debug)]
-pub enum Expr {
+pub enum Expr<V> {
     Literal(Value, SrcLoc),
-    UnOpApp(UnOp, Box<Expr>, SrcLoc),
-    BinOpApp(BinOp, Box<Expr>, Box<Expr>, SrcLoc),
+    UnOpApp(UnOp, Box<Expr<V>>, SrcLoc),
+    BinOpApp(BinOp, Box<Expr<V>>, Box<Expr<V>>, SrcLoc),
+    Var(V, SrcLoc),
+    Assign(V, Box<Expr<V>>, SrcLoc),
+    Call(Box<Expr<V>>, Vec<Expr<V>>, SrcLoc),
 }
 
-impl fmt::Display for Expr {
+impl<V> Expr<V> {
+    fn location(&self) -> &SrcLoc {
+        match self {
+            Expr::Literal(_, loc) => loc,
+            Expr::UnOpApp(_, _, loc) => loc,
+            Expr::BinOpApp(_, _, _, loc) => loc,
+            Expr::Var(_, loc) => loc,
+            Expr::Assign(_, _, loc) => loc,
+            Expr::Call(_, _, loc) => loc,
+        }
+    }
+}
+
+impl<V: fmt::Display> fmt::Display for Expr<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Expr::Literal(v, _) => write!(f, "{}", v),
             Expr::UnOpApp(op, e, _) => write!(f, "{}{}", op, e),
             Expr::BinOpApp(op, lhs, rhs, _) =>
               write!(f, "({} {} {})", lhs, op, rhs),
+            Expr::Var(v, _) => write!(f, "{}", v),
+            Expr::Assign(v, e, _) => write!(f, "({} = {})", v, e),
+            Expr::Call(callee, args, _) => {
+                write!(f, "({})(", callee)?;
+                let mut sep = "";
+                for a in args {
+                    write!(f, "{}{}", sep, a)?;
+                    sep = ", "
+                }
+                write!(f, ")")
+            },
         }
     }
 }
