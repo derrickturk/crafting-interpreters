@@ -36,6 +36,8 @@ pub enum BinOp {
     LtEq,
     Gt,
     GtEq,
+    And,
+    Or,
 }
 
 impl fmt::Display for BinOp {
@@ -51,6 +53,8 @@ impl fmt::Display for BinOp {
             BinOp::LtEq => write!(f, "<="),
             BinOp::Gt => write!(f, ">"),
             BinOp::GtEq => write!(f, ">="),
+            BinOp::And => write!(f, "and"),
+            BinOp::Or => write!(f, "or"),
         }
     }
 }

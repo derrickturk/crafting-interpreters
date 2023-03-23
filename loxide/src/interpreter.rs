@@ -29,6 +29,22 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
             }
         },
 
+        Expr::BinOpApp(BinOp::And, lhs, rhs, _) => {
+            let lhs = eval_expr(lhs)?;
+            if !lhs.truthy() {
+                return Ok(lhs);
+            }
+            eval_expr(rhs)
+        },
+
+        Expr::BinOpApp(BinOp::Or, lhs, rhs, _) => {
+            let lhs = eval_expr(lhs)?;
+            if lhs.truthy() {
+                return Ok(lhs);
+            }
+            eval_expr(rhs)
+        },
+
         Expr::BinOpApp(BinOp::Add, lhs, rhs, loc) => {
             match (eval_expr(lhs)?, eval_expr(rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
@@ -109,6 +125,10 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
             }
         },
 
-        _ => todo!("about to get real SON!"),
+        Expr::Var(_, _) => panic!("no env yet!"),
+
+        Expr::Assign(_, _, _) => panic!("no env yet!"),
+
+        Expr::Call(_, _, _) => panic!("no fns yet"),
     }
 }
