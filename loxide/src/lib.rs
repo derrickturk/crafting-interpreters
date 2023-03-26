@@ -8,6 +8,7 @@ pub mod syntax;
 pub mod value;
 
 pub use {
+    env::Env,
     error::{Error, ErrorBundle, ErrorDetails, Result},
     lexer::{lex},
     interpreter::{eval_expr},

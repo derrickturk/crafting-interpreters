@@ -1,4 +1,5 @@
 use crate::{
+    env::Env,
     error::{self, Error, ErrorDetails},
     syntax::*,
     value::*,
@@ -14,15 +15,25 @@ macro_rules! type_error {
     };
 }
 
-pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
+macro_rules! undef_error {
+    ($loc:expr, $varname:expr) => {
+        Error {
+            loc: Some($loc),
+            lexeme: None,
+            details: ErrorDetails::UndefinedVariable($varname),
+        }
+    };
+}
+
+pub fn eval_expr(env: &Env, expr: &Expr<String>) -> error::Result<Value> {
     match expr {
         Expr::Literal(v, _) => Ok(v.clone()),
 
         Expr::UnOpApp(UnOp::Complement, e, _) =>
-            Ok(Value::Bool(!eval_expr(e)?.truthy())),
+            Ok(Value::Bool(!eval_expr(env, e)?.truthy())),
 
         Expr::UnOpApp(UnOp::Negate, e, loc) => {
-            if let Value::Number(n) = eval_expr(e)? {
+            if let Value::Number(n) = eval_expr(env, e)? {
                 Ok(Value::Number(-n))
             } else {
                 Err(type_error!(*loc, "-", "operand must be number"))
@@ -30,23 +41,23 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
         },
 
         Expr::BinOpApp(BinOp::And, lhs, rhs, _) => {
-            let lhs = eval_expr(lhs)?;
+            let lhs = eval_expr(env, lhs)?;
             if !lhs.truthy() {
                 return Ok(lhs);
             }
-            eval_expr(rhs)
+            eval_expr(env, rhs)
         },
 
         Expr::BinOpApp(BinOp::Or, lhs, rhs, _) => {
-            let lhs = eval_expr(lhs)?;
+            let lhs = eval_expr(env, lhs)?;
             if lhs.truthy() {
                 return Ok(lhs);
             }
-            eval_expr(rhs)
+            eval_expr(env, rhs)
         },
 
         Expr::BinOpApp(BinOp::Add, lhs, rhs, loc) => {
-            match (eval_expr(lhs)?, eval_expr(rhs)?) {
+            match (eval_expr(env, lhs)?, eval_expr(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Number(l + r)),
                 (Value::String(mut l), Value::String(r)) => {
@@ -64,7 +75,7 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
         },
 
         Expr::BinOpApp(BinOp::Sub, lhs, rhs, loc) => {
-            match (eval_expr(lhs)?, eval_expr(rhs)?) {
+            match (eval_expr(env, lhs)?, eval_expr(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Number(l - r)),
                 _ => Err(type_error!(*loc, "-", "operands must be numbers")),
@@ -72,7 +83,7 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
         },
 
         Expr::BinOpApp(BinOp::Mul, lhs, rhs, loc) => {
-            match (eval_expr(lhs)?, eval_expr(rhs)?) {
+            match (eval_expr(env, lhs)?, eval_expr(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Number(l * r)),
                 _ => Err(type_error!(*loc, "*", "operands must be numbers")),
@@ -80,7 +91,7 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
         },
 
         Expr::BinOpApp(BinOp::Div, lhs, rhs, loc) => {
-            match (eval_expr(lhs)?, eval_expr(rhs)?) {
+            match (eval_expr(env, lhs)?, eval_expr(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Number(l / r)),
                 _ => Err(type_error!(*loc, "/", "operands must be numbers")),
@@ -88,13 +99,13 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
         },
 
         Expr::BinOpApp(BinOp::Eq, lhs, rhs, _) =>
-            Ok(Value::Bool(eval_expr(lhs)? == eval_expr(rhs)?)),
+            Ok(Value::Bool(eval_expr(env, lhs)? == eval_expr(env, rhs)?)),
 
         Expr::BinOpApp(BinOp::NotEq, lhs, rhs, _) =>
-            Ok(Value::Bool(eval_expr(lhs)? != eval_expr(rhs)?)),
+            Ok(Value::Bool(eval_expr(env, lhs)? != eval_expr(env, rhs)?)),
 
         Expr::BinOpApp(BinOp::Lt, lhs, rhs, loc) => {
-            match (eval_expr(lhs)?, eval_expr(rhs)?) {
+            match (eval_expr(env, lhs)?, eval_expr(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Bool(l < r)),
                 _ => Err(type_error!(*loc, "<", "operands must be numbers")),
@@ -102,7 +113,7 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
         },
 
         Expr::BinOpApp(BinOp::LtEq, lhs, rhs, loc) => {
-            match (eval_expr(lhs)?, eval_expr(rhs)?) {
+            match (eval_expr(env, lhs)?, eval_expr(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Bool(l <= r)),
                 _ => Err(type_error!(*loc, "<=", "operands must be numbers")),
@@ -110,7 +121,7 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
         },
 
         Expr::BinOpApp(BinOp::Gt, lhs, rhs, loc) => {
-            match (eval_expr(lhs)?, eval_expr(rhs)?) {
+            match (eval_expr(env, lhs)?, eval_expr(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Bool(l > r)),
                 _ => Err(type_error!(*loc, ">", "operands must be numbers")),
@@ -118,16 +129,30 @@ pub fn eval_expr<V>(expr: &Expr<V>) -> error::Result<Value> {
         },
 
         Expr::BinOpApp(BinOp::GtEq, lhs, rhs, loc) => {
-            match (eval_expr(lhs)?, eval_expr(rhs)?) {
+            match (eval_expr(env, lhs)?, eval_expr(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Bool(l >= r)),
                 _ => Err(type_error!(*loc, ">=", "operands must be numbers")),
             }
         },
 
-        Expr::Var(_, _) => panic!("no env yet!"),
+        Expr::Var(v, loc) => {
+            match env.get(&v) {
+                Some(val) => Ok(val.clone()),
+                None => Err(undef_error!(*loc, v.clone())),
+            }
+        },
 
-        Expr::Assign(_, _, _) => panic!("no env yet!"),
+        Expr::Assign(v, e, loc) => {
+            let val = eval_expr(env, e)?;
+            match env.get_mut(&v) {
+                Some(mut dst) => {
+                    *dst = val.clone();
+                    Ok(val)
+                },
+                None => Err(undef_error!(*loc, v.clone())),
+            }
+        },
 
         Expr::Call(_, _, _) => panic!("no fns yet"),
     }
