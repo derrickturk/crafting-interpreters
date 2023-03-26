@@ -7,13 +7,13 @@ use std::{
     process,
 };
 
-use loxide::{Env, ErrorBundle, eval_expr, lex, parse_expr,};
+use loxide::{Env, ErrorBundle, eval, lex, parse_expr,};
 
 fn run(source: &str) -> Result<(), ErrorBundle> {
     // TODO!
     let global = Env::new();
     let ex = parse_expr(lex(source))?;
-    println!("{}", eval_expr(&global, &ex)?);
+    println!("{}", eval(&global, &ex)?);
     Ok(())
 }
 

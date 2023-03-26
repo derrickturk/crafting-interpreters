@@ -19,6 +19,14 @@ impl Value {
             _ => true,
         }
     }
+
+    #[inline]
+    pub fn print_string(&self) -> String {
+        match self {
+            Value::String(s) => s.clone(),
+            _ => format!("{}", self),
+        }
+    }
 }
 
 impl fmt::Display for Value {

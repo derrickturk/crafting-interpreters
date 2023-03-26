@@ -25,6 +25,10 @@ impl Scope {
         }
     }
 
+    pub fn overwrite(&self, var: String, value: Value) {
+        self.0.borrow_mut().insert(var, value);
+    }
+
     pub fn get(&self, var: &str) -> Option<Ref<Value>> {
         Ref::filter_map(self.0.borrow(), |s| s.get(var)).ok()
     }
@@ -51,7 +55,10 @@ impl Env {
 
     pub fn declare(&self, var: String, value: Value) -> bool {
         match self {
-            Env::Global(globals) => globals.init(var, value),
+            Env::Global(globals) => {
+                globals.overwrite(var, value);
+                true
+            },
             Env::Local(locals, _) => locals.init(var, value),
         }
     }

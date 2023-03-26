@@ -37,6 +37,7 @@ impl error::Error for Error { }
 #[derive(Clone, Debug)]
 pub enum ErrorDetails {
     ParseExpected(&'static str),
+    AlreadyDefined(String),
     UndefinedVariable(String),
     UnexpectedCharacter(char),
     UnterminatedStrLit,
@@ -48,6 +49,8 @@ impl Display for ErrorDetails {
         match self {
             ErrorDetails::ParseExpected(expected) =>
                 write!(f, "expected {}", expected),
+            ErrorDetails::AlreadyDefined(var) =>
+                write!(f, "variable {} already defined in scope", var),
             ErrorDetails::UndefinedVariable(var) =>
                 write!(f, "undefined variable {}", var),
             ErrorDetails::UnexpectedCharacter(c) =>
