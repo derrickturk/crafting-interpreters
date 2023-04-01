@@ -271,8 +271,15 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
             Some(e)
         };
 
-        let body = Box::new(self.statement()?);
-        let body = Stmt::While(cond, body, t_for.loc);
+        let body = self.statement()?;
+        let body = if let Some(incr) = incr {
+            let b_loc = *body.location();
+            let i_loc = *incr.location();
+            Stmt::Block(vec![body, Stmt::Expr(incr, i_loc)], b_loc)
+        } else {
+            body
+        };
+        let body = Stmt::While(cond, Box::new(body), t_for.loc);
         let body = match init {
             Some(init) => {
                 let loc = *init.location();
@@ -302,7 +309,28 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
 
     #[inline]
     fn expression(&mut self) -> Option<Expr<String>> {
-        self.logic_or()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Option<Expr<String>> {
+        let e = self.logic_or()?;
+        if let Some(tok) = match_token!(self, TokenKind::Eq) {
+            let val = self.assignment()?;
+            match e {
+                Expr::Var(v, loc) =>
+                    Some(Expr::Assign(v, Box::new(val), loc)),
+                _ => {
+                    self.errors.push(Error {
+                        loc: Some(tok.loc),
+                        lexeme: Some(tok.lexeme.to_string()),
+                        details: ErrorDetails::NotLValue(format!("{}", val)),
+                    });
+                    return None;
+                }
+            }
+        } else {
+            Some(e)
+        }
     }
 
     fold_bin_op!(logic_or, logic_and, TokenKind::Or);
@@ -324,11 +352,18 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         }
     }
 
+    // TODO: call
+
     fn primary(&mut self) -> Option<Expr<String>> {
         if let Some(tok) = match_token!(self,
           TokenKind::Nil | TokenKind::True | TokenKind::False |
           TokenKind::StrLit(_) | TokenKind::NumLit(_)) {
             return Some(Expr::Literal(token_literal(&tok).unwrap(), tok.loc));
+        }
+
+        if let Some(Token { kind: TokenKind::Ident(name), loc, .. }) =
+          match_token!(self, TokenKind::Ident(_)) {
+            return Some(Expr::Var(name.to_string(), loc));
         }
 
         if let Some(_) = match_token!(self, TokenKind::LParen) {
@@ -342,7 +377,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
 
     #[inline]
     fn is_eof(&mut self) -> bool {
-        self.tokens.peek().is_some()
+        self.tokens.peek().is_none()
     }
 
     fn eof(&mut self) -> Option<()> {
@@ -440,4 +475,25 @@ pub fn parse_expr<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
         }
     }
     Err(p.errors)
+}
+
+#[inline]
+pub fn parse<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
+  tokens: I) -> Result<Vec<Stmt<String>>, ErrorBundle> {
+    let mut prog = Vec::new();
+    let mut p = Parser::new(tokens);
+    let mut ok = true;
+    while !p.is_eof() {
+        if let Some(s) = p.declaration() {
+            prog.push(s);
+        } else {
+            ok = false;
+            p.recover();
+        }
+    }
+    if ok {
+        Ok(prog)
+    } else {
+        Err(p.errors)
+    }
 }

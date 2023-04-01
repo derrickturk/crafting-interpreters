@@ -11,8 +11,8 @@ pub use {
     env::Env,
     error::{Error, ErrorBundle, ErrorDetails, Result},
     lexer::{lex},
-    interpreter::{eval, exec},
-    parser::{parse_expr},
+    interpreter::{eval, exec, run},
+    parser::{parse, parse_expr},
     srcloc::{SrcLoc},
     value::{Value},
 };

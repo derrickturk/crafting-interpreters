@@ -106,6 +106,7 @@ impl<V: fmt::Display> fmt::Display for Expr<V> {
 }
 
 /// A Lox statement
+#[derive(Clone, Debug)]
 pub enum Stmt<V> {
     Expr(Expr<V>, SrcLoc),
     IfElse(Expr<V>, Box<Stmt<V>>, Option<Box<Stmt<V>>>, SrcLoc),

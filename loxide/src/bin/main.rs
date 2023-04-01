@@ -5,35 +5,36 @@ use std::{
     fs::File,
     path::Path,
     process,
+    rc::Rc,
 };
 
-use loxide::{Env, ErrorBundle, eval, lex, parse_expr,};
-
-fn run(source: &str) -> Result<(), ErrorBundle> {
-    // TODO!
-    let global = Env::new();
-    let ex = parse_expr(lex(source))?;
-    println!("{}", eval(&global, &ex)?);
-    Ok(())
-}
+use loxide::{Env, ErrorBundle, run, lex, parse,};
 
 fn run_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
     let mut source = String::new();
     File::open(path)?.read_to_string(&mut source)?;
-    Ok(run(&source)?)
+    let global = Env::new();
+    Ok(run(&global, &parse(lex(&source))?)?)
+}
+
+#[inline]
+fn run_incremental(env: &Rc<Env>, src: &str) -> Result<(), ErrorBundle> {
+    let prog = parse(lex(src))?;
+    Ok(run(env, &prog)?)
 }
 
 fn run_prompt() -> Result<(), Box<dyn Error>> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut any_err = false;
+    let global = Env::new();
     loop {
         write!(&mut stdout, "> ")?;
         stdout.flush()?;
         let mut line = String::new();
         match stdin.read_line(&mut line)? {
             0 => break,
-            _ => if let Err(es) = run(line.trim_end()) {
+            _ => if let Err(es) = run_incremental(&global, line.trim_end()) {
                 any_err = true;
                 eprint!("{}", es);
             },

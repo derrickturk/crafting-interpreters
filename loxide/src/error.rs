@@ -37,6 +37,7 @@ impl error::Error for Error { }
 #[derive(Clone, Debug)]
 pub enum ErrorDetails {
     AlreadyDefined(String),
+    NotLValue(String),
     ParseExpected(&'static str),
     TooManyArgs,
     TypeError(&'static str),
@@ -50,6 +51,8 @@ impl Display for ErrorDetails {
         match self {
             ErrorDetails::AlreadyDefined(var) =>
                 write!(f, "variable {} already defined in scope", var),
+            ErrorDetails::NotLValue(what) =>
+                write!(f, "{} is not a valid assignment target", what),
             ErrorDetails::ParseExpected(expected) =>
                 write!(f, "expected {}", expected),
             ErrorDetails::TooManyArgs =>

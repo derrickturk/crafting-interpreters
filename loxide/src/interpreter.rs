@@ -229,3 +229,11 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<String>) -> error::Result<()> {
         },
     }
 }
+
+#[inline]
+pub fn run(env: &Rc<Env>, prog: &[Stmt<String>]) -> error::Result<()> {
+    for stmt in prog {
+        exec(env, stmt)?;
+    }
+    Ok(())
+}
