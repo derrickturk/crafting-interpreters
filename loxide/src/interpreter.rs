@@ -190,6 +190,23 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<String>) -> error::Result<Value> {
                     }
                 },
 
+                Value::BuiltinFun(name, arity, ptr) => {
+                    if args.len() != arity {
+                        return Err(Error {
+                            loc: Some(*loc),
+                            lexeme: None,
+                            details: ErrorDetails::ArityMismatch(
+                              name.to_string(), arity, args.len()),
+                        });
+                    }
+
+                    let mut argv = Vec::new();
+                    for a in args {
+                        argv.push(eval(env, a)?);
+                    }
+                    Ok(ptr(argv))
+                },
+
                 _ => Err(type_error!(*loc, "(", "callee is not callable")),
             }
         }

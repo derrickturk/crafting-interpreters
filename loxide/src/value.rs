@@ -19,6 +19,7 @@ pub enum Value {
     String(String),
     // TODO: revisit on Stmt<String> -> Stmt<Slot> change
     Fun(Rc<(String, Vec<String>, Vec<Stmt<String>>)>, Rc<Env>),
+    BuiltinFun(&'static str, usize, fn(Vec<Value>) -> Value),
 }
 
 impl Value {
@@ -50,6 +51,7 @@ impl PartialEq for Value {
                 Rc::as_ptr(ld) == Rc::as_ptr(rd)
                   && Rc::as_ptr(le) == Rc::as_ptr(re)
             },
+            (Value::BuiltinFun(_, _, l), Value::BuiltinFun(_, _, r)) => l == r,
             (_, _) => false,
         }
     }
@@ -65,6 +67,8 @@ impl fmt::Display for Value {
             // NOTE: assumes no escaping; revisit if needed
             Value::String(s) => write!(f, "\"{}\"", s),
             Value::Fun(d, _) => write!(f, "<function {}>", d.0),
+            Value::BuiltinFun(name, _, _) =>
+                write!(f, "<built-in function {}>", name),
         }
     }
 }

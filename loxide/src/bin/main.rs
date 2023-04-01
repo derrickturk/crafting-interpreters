@@ -14,6 +14,7 @@ fn run_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
     let mut source = String::new();
     File::open(path)?.read_to_string(&mut source)?;
     let global = Env::new();
+    global.register_builtins();
     Ok(run(&global, &parse(lex(&source))?)?)
 }
 
@@ -28,6 +29,7 @@ fn run_prompt() -> Result<(), Box<dyn Error>> {
     let mut stdout = io::stdout();
     let mut any_err = false;
     let global = Env::new();
+    global.register_builtins();
     loop {
         write!(&mut stdout, "> ")?;
         stdout.flush()?;

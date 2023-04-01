@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::{
+    builtins::BUILTINS,
     value::Value,
 };
 
@@ -80,6 +81,13 @@ impl Env {
             Env::Global(globals) => globals.get_mut(var),
             Env::Local(locals, parent) =>
                 locals.get_mut(var).or_else(|| parent.get_mut(var)),
+        }
+    }
+
+    #[inline]
+    pub fn register_builtins(&self) {
+        for (name, arity, ptr) in BUILTINS {
+            self.declare(name.to_string(), Value::BuiltinFun(name, arity, ptr));
         }
     }
 }
