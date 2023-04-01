@@ -226,7 +226,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
     fn if_else_rest(&mut self, t_if: Token) -> Option<Stmt<String>> {
         require!(self, "'('", TokenKind::LParen);
         let cond = self.expression()?;
-        require!(self, "')'", TokenKind::LParen);
+        require!(self, "')'", TokenKind::RParen);
         let s_if = Box::new(self.statement()?);
         let s_else = if let Some(_) = match_token!(self, TokenKind::Else) {
             Some(Box::new(self.statement()?))
