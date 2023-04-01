@@ -375,6 +375,7 @@ module Parser = struct
     Some { item = Print e; loc = tok.loc }
 
   and return_rest p tok =
+    (* TODO: handle "return;" *)
     let* e = expression p in
     let* _ = require_kind p Semicolon "';'" in
     Some { item = Return e; loc = tok.loc }
