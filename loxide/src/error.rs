@@ -5,7 +5,10 @@ use std::{
     fmt::{self, Display, Formatter},
 };
 
-use crate::srcloc::SrcLoc;
+use crate::{
+    srcloc::SrcLoc,
+    value::Value,
+};
 
 /// Any old error
 #[derive(Clone, Debug)]
@@ -40,6 +43,7 @@ pub enum ErrorDetails {
     ArityMismatch(String, usize, usize),
     NotLValue(String),
     ParseExpected(&'static str),
+    Return(Value),
     TooManyArgs,
     TypeError(&'static str),
     UndefinedVariable(String),
@@ -60,6 +64,8 @@ impl Display for ErrorDetails {
                 write!(f, "{} is not a valid assignment target", what),
             ErrorDetails::ParseExpected(expected) =>
                 write!(f, "expected {}", expected),
+            ErrorDetails::Return(_) =>
+                write!(f, "return outside function or method"),
             ErrorDetails::TooManyArgs =>
                 write!(f, "more than 255 arguments or parameters"),
             ErrorDetails::TypeError(msg) =>

@@ -179,8 +179,15 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<String>) -> error::Result<Value> {
                             });
                         }
                     }
-                    run(&frame, &def.2)?;
-                    Ok(Value::Nil) // TODO
+
+                    match run(&frame, &def.2) {
+                        Err(Error { details: ErrorDetails::Return(val), .. }) =>
+                            Ok(val),
+                        Ok(()) =>
+                            Ok(Value::Nil),
+                        Err(e) =>
+                            Err(e)
+                    }
                 },
 
                 _ => Err(type_error!(*loc, "(", "callee is not callable")),
@@ -220,12 +227,16 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<String>) -> error::Result<()> {
             Ok(())
         },
 
-        Stmt::Return(None, _) => {
-            panic!("return");
-        },
-
-        Stmt::Return(Some(e), _) => {
-            panic!("return {}", eval(env, e)?);
+        Stmt::Return(e, loc) => {
+            let val = match e {
+                Some(e) => eval(env, e)?,
+                None => Value::Nil,
+            };
+            Err(Error {
+                loc: Some(*loc),
+                lexeme: None,
+                details: ErrorDetails::Return(val),
+            })
         },
 
         Stmt::Block(body, _) => {
