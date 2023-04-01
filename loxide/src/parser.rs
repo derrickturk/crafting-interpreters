@@ -348,11 +348,43 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
             Some(Expr::UnOpApp(
               token_un_op(&tok).unwrap(), Box::new(rhs), tok.loc))
         } else {
-            self.primary()
+            self.call()
         }
     }
 
-    // TODO: call
+    #[inline]
+    fn call(&mut self) -> Option<Expr<String>> {
+        let mut e = self.primary()?;
+        while let Some(lparen) = match_token!(self, TokenKind::LParen) {
+            e = self.call_rest(e, lparen)?;
+        }
+        Some(e)
+    }
+
+    fn call_rest(&mut self, callee: Expr<String>, lparen: Token
+      ) -> Option<Expr<String>> {
+        let mut args = Vec::new();
+        if !check_token!(self, TokenKind::RParen) {
+            loop {
+                args.push(self.expression()?);
+                if match_token!(self, TokenKind::Comma).is_none() {
+                    break;
+                }
+            }
+        }
+
+        let rparen = require!(self, "')'", TokenKind::RParen);
+        if args.len() > 255 {
+            self.errors.push(Error {
+                loc: Some(rparen.loc),
+                lexeme: Some(rparen.lexeme.to_string()),
+                details: ErrorDetails::TooManyArgs,
+            });
+            return None;
+        }
+
+        Some(Expr::Call(Box::new(callee), args, lparen.loc))
+    }
 
     fn primary(&mut self) -> Option<Expr<String>> {
         if let Some(tok) = match_token!(self,

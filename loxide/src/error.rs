@@ -37,6 +37,7 @@ impl error::Error for Error { }
 #[derive(Clone, Debug)]
 pub enum ErrorDetails {
     AlreadyDefined(String),
+    ArityMismatch(String, usize, usize),
     NotLValue(String),
     ParseExpected(&'static str),
     TooManyArgs,
@@ -51,6 +52,10 @@ impl Display for ErrorDetails {
         match self {
             ErrorDetails::AlreadyDefined(var) =>
                 write!(f, "variable {} already defined in scope", var),
+            ErrorDetails::ArityMismatch(name, expected, got) =>
+                write!(f,
+                  "function/method {} expected {} arguments, received {}",
+                  name, expected, got),
             ErrorDetails::NotLValue(what) =>
                 write!(f, "{} is not a valid assignment target", what),
             ErrorDetails::ParseExpected(expected) =>

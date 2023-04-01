@@ -8,6 +8,7 @@ use crate::{
     value::Value,
 };
 
+#[derive(Clone, Debug)]
 pub struct Scope(RefCell<HashMap<String, Value>>);
 
 impl Scope {
@@ -39,6 +40,7 @@ impl Scope {
 }
 
 // this will all change
+#[derive(Clone, Debug)]
 pub enum Env {
     Global(Scope),
     Local(Scope, Rc<Env>),

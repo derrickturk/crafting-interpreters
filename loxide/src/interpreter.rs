@@ -156,7 +156,36 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<String>) -> error::Result<Value> {
             }
         },
 
-        Expr::Call(_, _, _) => panic!("no fns yet"),
+        Expr::Call(callee, args, loc) => {
+            match eval(env, callee)? {
+                Value::Fun(def, closure) => {
+                    if args.len() != def.1.len() {
+                        return Err(Error {
+                            loc: Some(*loc),
+                            lexeme: None,
+                            details: ErrorDetails::ArityMismatch(
+                              def.0.clone(), def.1.len(), args.len()),
+                        });
+                    }
+
+                    let frame = closure.child();
+                    for (p, a) in def.1.iter().zip(args.iter()) {
+                        if !frame.declare(p.clone(), eval(env, a)?) {
+                            return Err(Error {
+                                loc: Some(*loc),
+                                lexeme: None,
+                                details: ErrorDetails::AlreadyDefined(
+                                  p.clone()),
+                            });
+                        }
+                    }
+                    run(&frame, &def.2)?;
+                    Ok(Value::Nil) // TODO
+                },
+
+                _ => Err(type_error!(*loc, "(", "callee is not callable")),
+            }
+        }
     }
 }
 
@@ -225,7 +254,18 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<String>) -> error::Result<()> {
         },
 
         Stmt::FunDef(name, params, body, loc) => {
-            panic!("fun {}", name);
+            let defn = Rc::new((
+              name.clone(), params.clone(), body.clone()));
+            let fun = Value::Fun(defn, env.clone());
+            if env.declare(name.clone(), fun) {
+                Ok(())
+            } else {
+                Err(Error {
+                    loc: Some(*loc),
+                    lexeme: None,
+                    details: ErrorDetails::AlreadyDefined(name.clone()),
+                })
+            }
         },
     }
 }
