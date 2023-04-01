@@ -191,7 +191,11 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<String>) -> error::Result<()> {
             Ok(())
         },
 
-        Stmt::Return(e, _) => {
+        Stmt::Return(None, _) => {
+            panic!("return");
+        },
+
+        Stmt::Return(Some(e), _) => {
             panic!("return {}", eval(env, e)?);
         },
 

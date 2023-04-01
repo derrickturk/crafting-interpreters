@@ -28,6 +28,19 @@ macro_rules! match_token {
     };
 }
 
+macro_rules! check_token {
+    ($self:ident, $($p:pat),*) => {
+        if let Some(Ok(t)) = $self.tokens.peek() {
+            match t.kind {
+                $($p => true,)*
+                _ => false,
+            }
+        } else {
+            false
+        }
+    };
+}
+
 macro_rules! fold_bin_op {
     ($name:ident, $parser:ident $(,$p:pat)*) => {
         fn $name(&mut self) -> Option<Expr<String>> {
@@ -75,6 +88,40 @@ macro_rules! require {
     };
 }
 
+// TODO: refactor for less duplication with require
+macro_rules! require_extract {
+    ($self:ident, $msg:literal, $p:pat, $e:expr) => {
+        match $self.tokens.next() {
+            Some(Ok(Token { kind: $p, .. })) => {
+                $e
+            },
+
+            Some(Ok(tok)) => {
+                $self.errors.push(Error {
+                    loc: Some(tok.loc),
+                    lexeme: Some(tok.lexeme.to_string()),
+                    details: ErrorDetails::ParseExpected($msg),
+                });
+                return None;
+            },
+
+            Some(Err(e)) => {
+                $self.errors.push(e);
+                return None;
+            },
+
+            None => {
+                $self.errors.push(Error {
+                    loc: None,
+                    lexeme: None,
+                    details: ErrorDetails::ParseExpected($msg),
+                });
+                return None;
+            },
+        }
+    };
+}
+
 impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
     pub fn new(tokens: I) -> Self {
         Self {
@@ -83,10 +130,183 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         }
     }
 
-    fn expression(&mut self) -> Option<Expr<String>> {
-        self.equality()
+    #[inline]
+    fn declaration(&mut self) -> Option<Stmt<String>> {
+        if let Some(tok) = match_token!(self, TokenKind::Var) {
+            return self.var_decl_rest(tok);
+        }
+
+        if let Some(tok) = match_token!(self, TokenKind::Fun) {
+            return self.fundef_or_method_rest(tok);
+        }
+
+        self.statement()
     }
 
+    fn statement(&mut self) -> Option<Stmt<String>> {
+        if let Some(tok) = match_token!(self, TokenKind::If) {
+            return self.if_else_rest(tok);
+        }
+
+        if let Some(tok) = match_token!(self, TokenKind::While) {
+            return self.while_rest(tok);
+        }
+
+        if let Some(tok) = match_token!(self, TokenKind::For) {
+            return self.for_rest(tok);
+        }
+
+        if let Some(tok) = match_token!(self, TokenKind::Print) {
+            let e = self.expression()?;
+            require!(self, "';'", TokenKind::Semicolon);
+            return Some(Stmt::Print(e, tok.loc));
+        }
+
+        if let Some(tok) = match_token!(self, TokenKind::Return) {
+            if let Some(_) = match_token!(self, TokenKind::Semicolon) {
+                return Some(Stmt::Return(None, tok.loc));
+            }
+            let e = self.expression()?;
+            require!(self, "';'", TokenKind::Semicolon);
+            return Some(Stmt::Return(Some(e), tok.loc));
+        }
+
+        if let Some(tok) = match_token!(self, TokenKind::LBrace) {
+            let body = self.block_rest()?;
+            return Some(Stmt::Block(body, tok.loc));
+        }
+
+        self.expression_statement()
+    }
+
+    fn var_decl_rest(&mut self, var: Token) -> Option<Stmt<String>> {
+        let name = require_extract!(self,
+          "identifier", TokenKind::Ident(name), name.to_string());
+        let init = if let Some(_) = match_token!(self, TokenKind::Eq) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        require!(self, "';'", TokenKind::Semicolon);
+        Some(Stmt::VarDecl(name, init, var.loc))
+    }
+
+    fn fundef_or_method_rest(&mut self, fun: Token) -> Option<Stmt<String>> {
+        let name = require_extract!(self,
+          "identifier", TokenKind::Ident(name), name.to_string());
+        require!(self, "'('", TokenKind::LParen);
+
+        let mut params = Vec::new();
+        if !check_token!(self, TokenKind::RParen) {
+            loop {
+                params.push(require_extract!(self, "parameter name",
+                  TokenKind::Ident(name), name.to_string()));
+                if match_token!(self, TokenKind::Comma).is_none() {
+                    break;
+                }
+            }
+        }
+
+        let rparen = require!(self, "')'", TokenKind::RParen);
+        if params.len() > 255 {
+            self.errors.push(Error {
+                loc: Some(rparen.loc),
+                lexeme: Some(rparen.lexeme.to_string()),
+                details: ErrorDetails::TooManyArgs,
+            });
+            return None;
+        }
+
+        require!(self, "'{'", TokenKind::LBrace);
+        let body = self.block_rest()?;
+
+        Some(Stmt::FunDef(name, params, body, fun.loc))
+    }
+
+    fn if_else_rest(&mut self, t_if: Token) -> Option<Stmt<String>> {
+        require!(self, "'('", TokenKind::LParen);
+        let cond = self.expression()?;
+        require!(self, "')'", TokenKind::LParen);
+        let s_if = Box::new(self.statement()?);
+        let s_else = if let Some(_) = match_token!(self, TokenKind::Else) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None
+        };
+        Some(Stmt::IfElse(cond, s_if, s_else, t_if.loc))
+    }
+
+    fn while_rest(&mut self, t_while: Token) -> Option<Stmt<String>> {
+        require!(self, "'('", TokenKind::LParen);
+        let cond = self.expression()?;
+        require!(self, "')'", TokenKind::LParen);
+        let body = Box::new(self.statement()?);
+        Some(Stmt::While(cond, body, t_while.loc))
+    }
+
+    fn for_rest(&mut self, t_for: Token) -> Option<Stmt<String>> {
+        require!(self, "'('", TokenKind::LParen);
+
+        let init = if let Some(_) = match_token!(self, TokenKind::Semicolon) {
+            None
+        } else if let Some(tok) = match_token!(self, TokenKind::Var) {
+            Some(self.var_decl_rest(tok)?)
+        } else {
+            Some(self.expression_statement()?)
+        };
+
+        let cond = if let Some(tok) = match_token!(self, TokenKind::Semicolon) {
+            Expr::Literal(Value::Bool(true), tok.loc)
+        } else {
+            let e = self.expression()?;
+            require!(self, "';'", TokenKind::Semicolon);
+            e
+        };
+
+        let incr = if let Some(_) = match_token!(self, TokenKind::RParen) {
+            None
+        } else {
+            let e = self.expression()?;
+            require!(self, "')'", TokenKind::RParen);
+            Some(e)
+        };
+
+        let body = Box::new(self.statement()?);
+        let body = Stmt::While(cond, body, t_for.loc);
+        let body = match init {
+            Some(init) => {
+                let loc = *init.location();
+                Stmt::Block(vec![init, body], loc)
+            },
+            None => body,
+        };
+        Some(body)
+    }
+
+    fn block_rest(&mut self) -> Option<Vec<Stmt<String>>> {
+        let mut body = Vec::new();
+        while !check_token!(self, TokenKind::RBrace) && !self.is_eof() {
+            body.push(self.declaration()?);
+        }
+        require!(self, "'}'", TokenKind::RBrace);
+        Some(body) // once told me
+    }
+
+    #[inline]
+    fn expression_statement(&mut self) -> Option<Stmt<String>> {
+        let e = self.expression()?;
+        require!(self, "';'", TokenKind::Semicolon);
+        let loc = *e.location();
+        Some(Stmt::Expr(e, loc))
+    }
+
+    #[inline]
+    fn expression(&mut self) -> Option<Expr<String>> {
+        self.logic_or()
+    }
+
+    fold_bin_op!(logic_or, logic_and, TokenKind::Or);
+    fold_bin_op!(logic_and, equality, TokenKind::And);
     fold_bin_op!(equality, comparison, TokenKind::EqEq | TokenKind::NotEq);
     fold_bin_op!(comparison, term,
       TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq);
@@ -118,6 +338,11 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         }
 
         require!(self, "an expression")
+    }
+
+    #[inline]
+    fn is_eof(&mut self) -> bool {
+        self.tokens.peek().is_some()
     }
 
     fn eof(&mut self) -> Option<()> {
@@ -188,6 +413,8 @@ fn token_bin_op(token: &Token<'_>) -> Option<BinOp> {
         TokenKind::LtEq => Some(BinOp::LtEq),
         TokenKind::Gt => Some(BinOp::Gt),
         TokenKind::GtEq => Some(BinOp::GtEq),
+        TokenKind::And => Some(BinOp::And),
+        TokenKind::Or => Some(BinOp::Or),
         _ => None,
     }
 }

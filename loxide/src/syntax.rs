@@ -71,7 +71,7 @@ pub enum Expr<V> {
 }
 
 impl<V> Expr<V> {
-    fn location(&self) -> &SrcLoc {
+    pub fn location(&self) -> &SrcLoc {
         match self {
             Expr::Literal(_, loc) => loc,
             Expr::UnOpApp(_, _, loc) => loc,
@@ -111,14 +111,14 @@ pub enum Stmt<V> {
     IfElse(Expr<V>, Box<Stmt<V>>, Option<Box<Stmt<V>>>, SrcLoc),
     While(Expr<V>, Box<Stmt<V>>, SrcLoc),
     Print(Expr<V>, SrcLoc),
-    Return(Expr<V>, SrcLoc),
+    Return(Option<Expr<V>>, SrcLoc),
     Block(Vec<Stmt<V>>, SrcLoc),
     VarDecl(V, Option<Expr<V>>, SrcLoc),
     FunDef(V, Vec<V>, Vec<Stmt<V>>, SrcLoc),
 }
 
 impl<V> Stmt<V> {
-    fn location(&self) -> &SrcLoc {
+    pub fn location(&self) -> &SrcLoc {
         match self {
             Stmt::Expr(_, loc) => loc,
             Stmt::IfElse(_, _, _, loc) => loc,
@@ -146,7 +146,8 @@ impl<V: fmt::Display> fmt::Display for Stmt<V> {
             Stmt::While(cond, body, _) =>
                 write!(f, "while ({}) {{\n{}\n}}", cond, body),
             Stmt::Print(e, _) => write!(f, "print {};", e),
-            Stmt::Return(e, _) => write!(f, "return {};", e),
+            Stmt::Return(Some(e), _) => write!(f, "return {};", e),
+            Stmt::Return(None, _) => write!(f, "return;"),
             Stmt::Block(body, _) => {
                 write!(f, "{{\n")?;
                 for s in body {

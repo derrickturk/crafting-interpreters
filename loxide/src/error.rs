@@ -36,29 +36,32 @@ impl error::Error for Error { }
 /// The details of what went wrong
 #[derive(Clone, Debug)]
 pub enum ErrorDetails {
-    ParseExpected(&'static str),
     AlreadyDefined(String),
+    ParseExpected(&'static str),
+    TooManyArgs,
+    TypeError(&'static str),
     UndefinedVariable(String),
     UnexpectedCharacter(char),
     UnterminatedStrLit,
-    TypeError(&'static str),
 }
 
 impl Display for ErrorDetails {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
-            ErrorDetails::ParseExpected(expected) =>
-                write!(f, "expected {}", expected),
             ErrorDetails::AlreadyDefined(var) =>
                 write!(f, "variable {} already defined in scope", var),
+            ErrorDetails::ParseExpected(expected) =>
+                write!(f, "expected {}", expected),
+            ErrorDetails::TooManyArgs =>
+                write!(f, "more than 255 arguments or parameters"),
+            ErrorDetails::TypeError(msg) =>
+                write!(f, "type error: {}", msg),
             ErrorDetails::UndefinedVariable(var) =>
                 write!(f, "undefined variable {}", var),
             ErrorDetails::UnexpectedCharacter(c) =>
                 write!(f, "unexpected character {}", c),
             ErrorDetails::UnterminatedStrLit =>
                 write!(f, "unterminated string literal"),
-            ErrorDetails::TypeError(msg) =>
-                write!(f, "type error: {}", msg),
         }
     }
 }
