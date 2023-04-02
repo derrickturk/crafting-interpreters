@@ -16,7 +16,7 @@ pub enum Value {
     Nil,
     Bool(bool),
     Number(f64),
-    String(String),
+    String(Rc<String>),
     Fun(Rc<(String, Vec<Slot>, Vec<Stmt<Slot, usize>>, usize)>, Rc<Env>),
     BuiltinFun(&'static str, usize, fn(Vec<Value>) -> Value),
 }
@@ -33,7 +33,7 @@ impl Value {
     #[inline]
     pub fn print_string(&self) -> String {
         match self {
-            Value::String(s) => s.clone(),
+            Value::String(s) => (**s).clone(),
             _ => format!("{}", self),
         }
     }

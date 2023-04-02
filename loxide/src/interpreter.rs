@@ -62,9 +62,8 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
             match (eval(env, lhs)?, eval(env, rhs)?) {
                 (Value::Number(l), Value::Number(r)) =>
                     Ok(Value::Number(l + r)),
-                (Value::String(mut l), Value::String(r)) => {
-                    l.push_str(&r);
-                    Ok(Value::String(l))
+                (Value::String(l), Value::String(r)) => {
+                    Ok(Value::String(Rc::new((*l).clone() + r.as_str())))
                 },
                 (Value::Number(_), Value::String(_))
                   | (Value::String(_), Value::Number(_)) =>

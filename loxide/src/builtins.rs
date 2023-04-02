@@ -1,5 +1,6 @@
 use std::{
     io,
+    rc::Rc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -13,11 +14,11 @@ fn clock(_: Vec<Value>) -> Value {
 fn read_line(_: Vec<Value>) -> Value {
     let mut line = String::new();
     io::stdin().read_line(&mut line).expect("host I/O failure!");
-    Value::String(line)
+    Value::String(Rc::new(line))
 }
 
 fn to_string(vals: Vec<Value>) -> Value {
-    Value::String(vals[0].print_string())
+    Value::String(Rc::new(vals[0].print_string()))
 }
 
 pub const BUILTINS: [(&'static str, usize, fn(Vec<Value>) -> Value); 3] = [

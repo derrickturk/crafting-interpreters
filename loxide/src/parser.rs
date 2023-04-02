@@ -1,4 +1,7 @@
-use std::iter::Peekable;
+use std::{
+    iter::Peekable,
+    rc::Rc,
+};
 
 use crate::{
     error::{self, Error, ErrorBundle, ErrorDetails,},
@@ -493,7 +496,7 @@ fn token_literal(token: &Token<'_>) -> Option<Value> {
         TokenKind::True => Some(Value::Bool(true)),
         TokenKind::False => Some(Value::Bool(false)),
         TokenKind::NumLit(n) => Some(Value::Number(n)),
-        TokenKind::StrLit(s) => Some(Value::String(s.to_string())),
+        TokenKind::StrLit(s) => Some(Value::String(Rc::new(s.to_string()))),
         _ => None,
     }
 }
