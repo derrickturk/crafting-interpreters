@@ -398,13 +398,19 @@ impl Resolver {
                 Ok(Stmt::VarDecl(v, init, loc))
             },
 
-            Stmt::FunDef(name, params, body, (), loc) =>  {
+            Stmt::FunDef(name, params, body, (), loc) => {
                 let mut errs = ErrorBundle::new();
-                let v = match self.scope.declare(name, loc) {
+                let v = match self.scope.declare(name.clone(), loc) {
                     Ok(slot) => Some(slot),
                     Err(e) => {
                         errs.push(e);
                         None
+                    },
+                };
+                match self.scope.define(name, loc) {
+                    Ok(_) => { },
+                    Err(e) => {
+                        errs.push(e);
                     },
                 };
                 self.scope.enter();
