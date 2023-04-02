@@ -240,7 +240,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
     fn while_rest(&mut self, t_while: Token) -> Option<Stmt<String, ()>> {
         require!(self, "'('", TokenKind::LParen);
         let cond = self.expression()?;
-        require!(self, "')'", TokenKind::LParen);
+        require!(self, "')'", TokenKind::RParen);
         let body = Box::new(self.statement()?);
         Some(Stmt::While(cond, body, t_while.loc))
     }
