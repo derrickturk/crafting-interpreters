@@ -47,7 +47,10 @@ impl Scope {
 
     #[inline]
     fn enter(&mut self) {
+        let kind = self.kind;
         let mut child = Scope::new();
+        // inherit kind (e.g. for blocks)
+        child.kind = kind;
         // the "child" becomes the "parent"
         mem::swap(self, &mut child);
         self.parent = Some(Box::new(child));

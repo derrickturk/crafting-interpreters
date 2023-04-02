@@ -213,7 +213,8 @@ let rec resolve_stmt { item; loc } =
               return (SR.Return None)
         end
     | SP.Block (body, ()) ->
-        let* () = push_frame None in
+        let* (f, _) = get in
+        let* () = push_frame f.kind in
         let* body' = traverse resolve_stmt body in
         let* slots = local_slots in
         let* () = pop_frame in
