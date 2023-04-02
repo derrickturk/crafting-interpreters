@@ -23,7 +23,7 @@ type resolve_frame = {
 let slots { slots; _ } = slots
 
 type resolve_result =
-  | Known of int * int * var_state
+  | Known of int * int * var_state * bool
   | Unknown of int * int
 
 let init_global = {
@@ -44,12 +44,12 @@ let is_global { parent; _ } = parent = None
 let find_name frame name =
   let rec go depth ({ slots; locals; parent; _ } as f) name =
     match StrMap.find_opt name locals with
-      | Some (slot, state) -> f, Known (depth, slot, state)
+      | Some (slot, state) -> f, Known (depth, slot, state, is_global f)
       | None ->
           match parent with
             | Some p ->
                 begin match go (depth + 1) p name with
-                  | (_, (Known (_, _, _) as r)) ->
+                  | (_, (Known (_, _, _, _) as r)) ->
                       f, r
                   | (p', (Unknown (_, _) as r)) ->
                       { f with parent = Some p' }, r
@@ -110,12 +110,15 @@ let declare { item; loc } =
             locals = StrMap.add item (f.slots, Declared) f.locals;
           }
 
-let define { item; _ } =
+let define { item; loc; } =
   let open State_monad in
   let* (f, _) = get in
   match StrMap.find_opt item f.locals with
-    | Some (n, _) -> put_frame
+    | Some (n, (Deferred | Declared)) -> put_frame
         { f with locals = StrMap.add item (n, Defined) f.locals }
+    | Some (_, Defined) -> fail
+        { Error.lexeme = None; details = AlreadyDefined item }
+        loc
     | None -> put_frame
         { f with
           slots = f.slots + 1;
@@ -127,12 +130,22 @@ let resolve { item; loc } =
   let* (f, _) = get in
   let (f', result) = find_name f item in
   let* () = put_frame f' in
-  return begin match result with
-    | Known (depth, slot, _) -> {
+  begin match result with
+    | Known (depth, slot, Declared, false) ->
+        let* () = fail {
+          Error.lexeme = None;
+          details = CircularDefinition item;
+        } loc
+        in
+        return {
+          item = (item, depth, slot);
+          loc;
+        }
+    | Known (depth, slot, _, _) -> return {
         item = (item, depth, slot);
         loc;
       }
-    | Unknown (depth, slot) -> {
+    | Unknown (depth, slot) -> return {
         item = (item, depth, slot);
         loc;
       }
@@ -231,13 +244,13 @@ let rec resolve_stmt { item; loc } =
         return (SR.VarDecl (v', init'))
     | SP.FunDef (v, params, body, ()) ->
         let* () = declare v in
+        let* () = define v in
         let* () = push_frame (Some Function) in
         let* () = sequence define params in
         let* params' = traverse resolve params in
         let* body' = traverse resolve_stmt body in
         let* slots = local_slots in
         let* () = pop_frame in
-        let* () = define v in
         let* v' = resolve v in
         return (SR.FunDef (v', params', body', slots))
   in { item = item'; loc }

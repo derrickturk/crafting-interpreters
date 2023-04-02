@@ -1,5 +1,6 @@
 type details =
   | AlreadyDefined of string
+  | CircularDefinition of string
   | InvalidLValue of string
   | InvalidReturn
   | ParseExpected of string
