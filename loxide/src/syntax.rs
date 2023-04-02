@@ -107,18 +107,18 @@ impl<V: fmt::Display> fmt::Display for Expr<V> {
 
 /// A Lox statement
 #[derive(Clone, Debug)]
-pub enum Stmt<V> {
+pub enum Stmt<V, S> {
     Expr(Expr<V>, SrcLoc),
-    IfElse(Expr<V>, Box<Stmt<V>>, Option<Box<Stmt<V>>>, SrcLoc),
-    While(Expr<V>, Box<Stmt<V>>, SrcLoc),
+    IfElse(Expr<V>, Box<Stmt<V, S>>, Option<Box<Stmt<V, S>>>, SrcLoc),
+    While(Expr<V>, Box<Stmt<V, S>>, SrcLoc),
     Print(Expr<V>, SrcLoc),
     Return(Option<Expr<V>>, SrcLoc),
-    Block(Vec<Stmt<V>>, SrcLoc),
+    Block(Vec<Stmt<V, S>>, S, SrcLoc),
     VarDecl(V, Option<Expr<V>>, SrcLoc),
-    FunDef(V, Vec<V>, Vec<Stmt<V>>, SrcLoc),
+    FunDef(V, Vec<V>, Vec<Stmt<V, S>>, S, SrcLoc),
 }
 
-impl<V> Stmt<V> {
+impl<V, S> Stmt<V, S> {
     pub fn location(&self) -> &SrcLoc {
         match self {
             Stmt::Expr(_, loc) => loc,
@@ -126,14 +126,14 @@ impl<V> Stmt<V> {
             Stmt::While(_, _, loc) => loc,
             Stmt::Print(_, loc) => loc,
             Stmt::Return(_, loc) => loc,
-            Stmt::Block(_, loc) => loc,
+            Stmt::Block(_, _, loc) => loc,
             Stmt::VarDecl(_, _, loc) => loc,
-            Stmt::FunDef(_, _, _, loc) => loc,
+            Stmt::FunDef(_, _, _, _, loc) => loc,
         }
     }
 }
 
-impl<V: fmt::Display> fmt::Display for Stmt<V> {
+impl<V: fmt::Display, S> fmt::Display for Stmt<V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Stmt::Expr(e, _) => write!(f, "{};", e),
@@ -149,7 +149,7 @@ impl<V: fmt::Display> fmt::Display for Stmt<V> {
             Stmt::Print(e, _) => write!(f, "print {};", e),
             Stmt::Return(Some(e), _) => write!(f, "return {};", e),
             Stmt::Return(None, _) => write!(f, "return;"),
-            Stmt::Block(body, _) => {
+            Stmt::Block(body, _, _) => {
                 write!(f, "{{\n")?;
                 for s in body {
                     write!(f, "{}\n", s)?;
@@ -163,7 +163,7 @@ impl<V: fmt::Display> fmt::Display for Stmt<V> {
                 }
                 write!(f, ";")
             },
-            Stmt::FunDef(v, params, body, _) => {
+            Stmt::FunDef(v, params, body, _, _) => {
                 write!(f, "fun {} (", v)?;
                 let mut sep = "";
                 for p in params {

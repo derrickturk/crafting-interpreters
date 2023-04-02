@@ -42,6 +42,7 @@ pub enum ErrorDetails {
     AlreadyDefined(String),
     ArityMismatch(String, usize, usize),
     NotLValue(String),
+    InvalidReturn,
     ParseExpected(&'static str),
     Return(Value),
     TooManyArgs,
@@ -62,10 +63,12 @@ impl Display for ErrorDetails {
                   name, expected, got),
             ErrorDetails::NotLValue(what) =>
                 write!(f, "{} is not a valid assignment target", what),
+            ErrorDetails::InvalidReturn =>
+                write!(f, "return outside function or method"),
             ErrorDetails::ParseExpected(expected) =>
                 write!(f, "expected {}", expected),
-            ErrorDetails::Return(_) =>
-                write!(f, "return outside function or method"),
+            ErrorDetails::Return(v) =>
+                write!(f, "return {} [you shouldn't see this!]", v),
             ErrorDetails::TooManyArgs =>
                 write!(f, "more than 255 arguments or parameters"),
             ErrorDetails::TypeError(msg) =>
@@ -83,15 +86,27 @@ impl Display for ErrorDetails {
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Debug)]
-pub struct ErrorBundle(pub Vec<Error>);
+pub struct ErrorBundle(Vec<Error>);
 
 impl ErrorBundle {
+    #[inline]
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
+    #[inline]
     pub fn push(&mut self, err: Error) {
         self.0.push(err);
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[inline]
+    pub fn append(&mut self, mut other: Self) {
+        self.0.append(&mut other.0);
     }
 }
 

@@ -213,7 +213,7 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<String>) -> error::Result<Value> {
     }
 }
 
-pub fn exec(env: &Rc<Env>, stmt: &Stmt<String>) -> error::Result<()> {
+pub fn exec(env: &Rc<Env>, stmt: &Stmt<String, ()>) -> error::Result<()> {
     match stmt {
         Stmt::Expr(e, _) => {
             eval(env, e)?;
@@ -256,7 +256,7 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<String>) -> error::Result<()> {
             })
         },
 
-        Stmt::Block(body, _) => {
+        Stmt::Block(body, (), _) => {
             let frame = env.child();
             for s in body {
                 exec(&frame, s)?;
@@ -281,7 +281,7 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<String>) -> error::Result<()> {
             }
         },
 
-        Stmt::FunDef(name, params, body, loc) => {
+        Stmt::FunDef(name, params, body, (), loc) => {
             let defn = Rc::new((
               name.clone(), params.clone(), body.clone()));
             let fun = Value::Fun(defn, env.clone());
@@ -299,7 +299,7 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<String>) -> error::Result<()> {
 }
 
 #[inline]
-pub fn run(env: &Rc<Env>, prog: &[Stmt<String>]) -> error::Result<()> {
+pub fn run(env: &Rc<Env>, prog: &[Stmt<String, ()>]) -> error::Result<()> {
     for stmt in prog {
         exec(env, stmt)?;
     }

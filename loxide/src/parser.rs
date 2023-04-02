@@ -131,7 +131,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
     }
 
     #[inline]
-    fn declaration(&mut self) -> Option<Stmt<String>> {
+    fn declaration(&mut self) -> Option<Stmt<String, ()>> {
         if let Some(tok) = match_token!(self, TokenKind::Var) {
             return self.var_decl_rest(tok);
         }
@@ -143,7 +143,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         self.statement()
     }
 
-    fn statement(&mut self) -> Option<Stmt<String>> {
+    fn statement(&mut self) -> Option<Stmt<String, ()>> {
         if let Some(tok) = match_token!(self, TokenKind::If) {
             return self.if_else_rest(tok);
         }
@@ -173,13 +173,13 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
 
         if let Some(tok) = match_token!(self, TokenKind::LBrace) {
             let body = self.block_rest()?;
-            return Some(Stmt::Block(body, tok.loc));
+            return Some(Stmt::Block(body, (), tok.loc));
         }
 
         self.expression_statement()
     }
 
-    fn var_decl_rest(&mut self, var: Token) -> Option<Stmt<String>> {
+    fn var_decl_rest(&mut self, var: Token) -> Option<Stmt<String, ()>> {
         let name = require_extract!(self,
           "identifier", TokenKind::Ident(name), name.to_string());
         let init = if let Some(_) = match_token!(self, TokenKind::Eq) {
@@ -191,7 +191,8 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         Some(Stmt::VarDecl(name, init, var.loc))
     }
 
-    fn fundef_or_method_rest(&mut self, fun: Token) -> Option<Stmt<String>> {
+    fn fundef_or_method_rest(&mut self, fun: Token
+      ) -> Option<Stmt<String, ()>> {
         let name = require_extract!(self,
           "identifier", TokenKind::Ident(name), name.to_string());
         require!(self, "'('", TokenKind::LParen);
@@ -220,10 +221,10 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         require!(self, "'{'", TokenKind::LBrace);
         let body = self.block_rest()?;
 
-        Some(Stmt::FunDef(name, params, body, fun.loc))
+        Some(Stmt::FunDef(name, params, body, (), fun.loc))
     }
 
-    fn if_else_rest(&mut self, t_if: Token) -> Option<Stmt<String>> {
+    fn if_else_rest(&mut self, t_if: Token) -> Option<Stmt<String, ()>> {
         require!(self, "'('", TokenKind::LParen);
         let cond = self.expression()?;
         require!(self, "')'", TokenKind::RParen);
@@ -236,7 +237,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         Some(Stmt::IfElse(cond, s_if, s_else, t_if.loc))
     }
 
-    fn while_rest(&mut self, t_while: Token) -> Option<Stmt<String>> {
+    fn while_rest(&mut self, t_while: Token) -> Option<Stmt<String, ()>> {
         require!(self, "'('", TokenKind::LParen);
         let cond = self.expression()?;
         require!(self, "')'", TokenKind::LParen);
@@ -244,7 +245,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         Some(Stmt::While(cond, body, t_while.loc))
     }
 
-    fn for_rest(&mut self, t_for: Token) -> Option<Stmt<String>> {
+    fn for_rest(&mut self, t_for: Token) -> Option<Stmt<String, ()>> {
         require!(self, "'('", TokenKind::LParen);
 
         let init = if let Some(_) = match_token!(self, TokenKind::Semicolon) {
@@ -275,7 +276,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         let body = if let Some(incr) = incr {
             let b_loc = *body.location();
             let i_loc = *incr.location();
-            Stmt::Block(vec![body, Stmt::Expr(incr, i_loc)], b_loc)
+            Stmt::Block(vec![body, Stmt::Expr(incr, i_loc)], (), b_loc)
         } else {
             body
         };
@@ -283,14 +284,14 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         let body = match init {
             Some(init) => {
                 let loc = *init.location();
-                Stmt::Block(vec![init, body], loc)
+                Stmt::Block(vec![init, body], (), loc)
             },
             None => body,
         };
         Some(body)
     }
 
-    fn block_rest(&mut self) -> Option<Vec<Stmt<String>>> {
+    fn block_rest(&mut self) -> Option<Vec<Stmt<String, ()>>> {
         let mut body = Vec::new();
         while !check_token!(self, TokenKind::RBrace) && !self.is_eof() {
             body.push(self.declaration()?);
@@ -300,7 +301,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
     }
 
     #[inline]
-    fn expression_statement(&mut self) -> Option<Stmt<String>> {
+    fn expression_statement(&mut self) -> Option<Stmt<String, ()>> {
         let e = self.expression()?;
         require!(self, "';'", TokenKind::Semicolon);
         let loc = *e.location();
@@ -511,7 +512,7 @@ pub fn parse_expr<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
 
 #[inline]
 pub fn parse<'a, I: Iterator<Item=error::Result<Token<'a>>>>(
-  tokens: I) -> Result<Vec<Stmt<String>>, ErrorBundle> {
+  tokens: I) -> Result<Vec<Stmt<String, ()>>, ErrorBundle> {
     let mut prog = Vec::new();
     let mut p = Parser::new(tokens);
     let mut ok = true;

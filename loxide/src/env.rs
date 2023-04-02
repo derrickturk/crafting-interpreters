@@ -10,6 +10,13 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
+pub struct Slot {
+    pub name: String,
+    pub frame: usize,
+    pub index: usize,
+}
+
+#[derive(Clone, Debug)]
 pub struct Scope(RefCell<HashMap<String, Value>>);
 
 impl Scope {

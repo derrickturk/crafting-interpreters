@@ -8,18 +8,23 @@ use std::{
     rc::Rc,
 };
 
-use loxide::{Env, ErrorBundle, run, lex, parse,};
+use loxide::{Env, ErrorBundle, Resolver, run, lex, parse};
 
 fn run_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
     let mut source = String::new();
     File::open(path)?.read_to_string(&mut source)?;
+    let prog = parse(lex(&source))?;
+    let mut resolver = Resolver::new();
+    let pr = resolver.resolve(prog.clone());
+    dbg!(pr);
     let global = Env::new();
     global.register_builtins();
-    Ok(run(&global, &parse(lex(&source))?)?)
+    Ok(run(&global, &prog)?)
 }
 
 #[inline]
-fn run_incremental(env: &Rc<Env>, src: &str) -> Result<(), ErrorBundle> {
+fn run_incremental(env: &Rc<Env>, src: &str
+  ) -> Result<(), ErrorBundle> {
     let prog = parse(lex(src))?;
     Ok(run(env, &prog)?)
 }

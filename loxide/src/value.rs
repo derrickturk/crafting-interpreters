@@ -18,7 +18,7 @@ pub enum Value {
     Number(f64),
     String(String),
     // TODO: revisit on Stmt<String> -> Stmt<Slot> change
-    Fun(Rc<(String, Vec<String>, Vec<Stmt<String>>)>, Rc<Env>),
+    Fun(Rc<(String, Vec<String>, Vec<Stmt<String, ()>>)>, Rc<Env>),
     BuiltinFun(&'static str, usize, fn(Vec<Value>) -> Value),
 }
 
