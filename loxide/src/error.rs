@@ -41,6 +41,7 @@ impl error::Error for Error { }
 pub enum ErrorDetails {
     AlreadyDefined(String),
     ArityMismatch(String, usize, usize),
+    CircularDefinition(String),
     NotLValue(String),
     InvalidReturn,
     ParseExpected(&'static str),
@@ -61,6 +62,8 @@ impl Display for ErrorDetails {
                 write!(f,
                   "function/method {} expected {} arguments, received {}",
                   name, expected, got),
+            ErrorDetails::CircularDefinition(var) =>
+                write!(f, "local variable {} used in own definition", var),
             ErrorDetails::NotLValue(what) =>
                 write!(f, "{} is not a valid assignment target", what),
             ErrorDetails::InvalidReturn =>

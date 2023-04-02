@@ -76,25 +76,39 @@ impl Scope {
         self.slots
     }
 
-    fn resolve(&mut self, name: String) -> Slot {
-        if let Some((index, _)) = self.locals.get_mut(&name) {
-            Slot {
-                name,
-                frame: 0,
-                index: *index,
-            }
-        } else if let Some(p) = &mut self.parent {
-            let mut slot = p.resolve(name);
-            slot.frame += 1;
-            slot
-        } else {
-            let index = self.slots;
-            self.slots += 1;
-            self.locals.insert(name.clone(), (index, VarState::Deferred));
-            Slot {
-                name,
-                frame: 0,
-                index,
+    fn resolve(&mut self, name: String, loc: SrcLoc) -> Result<Slot, Error> {
+        let is_global = self.global();
+        match self.locals.get_mut(&name) {
+            Some((_, VarState::Declared)) if !is_global =>
+                return Err(Error {
+                    loc: Some(loc),
+                    lexeme: None,
+                    details: ErrorDetails::CircularDefinition(name),
+                }),
+            Some((index, _)) =>
+                return Ok(Slot {
+                    name,
+                    frame: 0,
+                    index: *index,
+                }),
+            None => { },
+        };
+
+        match &mut self.parent {
+            Some(p) => {
+                let mut slot = p.resolve(name, loc)?;
+                slot.frame += 1;
+                Ok(slot)
+            },
+            None => {
+                let index = self.slots;
+                self.slots += 1;
+                self.locals.insert(name.clone(), (index, VarState::Deferred));
+                Ok(Slot {
+                    name,
+                    frame: 0,
+                    index,
+                })
             }
         }
     }
@@ -228,14 +242,21 @@ impl Resolver {
             },
 
             Expr::Var(name, loc) => {
-                let v = self.scope.resolve(name);
+                let v = self.scope.resolve(name, loc)?;
                 Ok(Expr::Var(v, loc))
             },
 
             Expr::Assign(name, e, loc) => {
-                let v = self.scope.resolve(name);
-                let e = self.resolve_expr(*e)?;
-                Ok(Expr::Assign(v, Box::new(e), loc))
+                match (self.scope.resolve(name, loc), self.resolve_expr(*e)) {
+                    (Ok(v), Ok(e)) => Ok(Expr::Assign(v, Box::new(e), loc)),
+                    (Err(e), Ok(_)) => Err(e.into()),
+                    (Ok(_), Err(es)) => Err(es),
+                    (Err(e), Err(es)) => {
+                        let mut errs: ErrorBundle = e.into();
+                        errs.append(es);
+                        Err(errs)
+                    },
+                }
             },
 
             Expr::Call(callee, args, loc) => {
