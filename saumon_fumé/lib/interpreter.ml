@@ -162,7 +162,9 @@ let rec exec_stmt env { item; _ } =
     | Print e ->
         let+ v = eval_expr env e in
         print_endline (Value.to_string v)
-    | Return e ->
+    | Return None ->
+        raise (RetExn Nil)
+    | Return (Some e) ->
         let+ v = eval_expr env e in
         raise (RetExn v)
     | Block (stmts, slots) ->

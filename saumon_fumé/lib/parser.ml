@@ -375,10 +375,12 @@ module Parser = struct
     Some { item = Print e; loc = tok.loc }
 
   and return_rest p tok =
-    (* TODO: handle "return;" *)
-    let* e = expression p in
-    let* _ = require_kind p Semicolon "';'" in
-    Some { item = Return e; loc = tok.loc }
+    match match_token p Semicolon with
+      | Some _ -> Some { item = Return None; loc = tok.loc }
+      | None ->
+          let* e = expression p in
+          let* _ = require_kind p Semicolon "';'" in
+          Some { item = Return (Some e); loc = tok.loc }
 
   and block_rest p tok =
     let rec go stmts =

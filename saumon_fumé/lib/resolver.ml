@@ -206,7 +206,12 @@ let rec resolve_stmt { item; loc } =
               details = InvalidReturn;
             } loc
         in
-        let+ e' = resolve_expr e in SR.Return e'
+        begin match e with
+          | Some e ->
+              let+ e' = resolve_expr e in SR.Return (Some e')
+          | None ->
+              return (SR.Return None)
+        end
     | SP.Block (body, ()) ->
         let* () = push_frame None in
         let* body' = traverse resolve_stmt body in

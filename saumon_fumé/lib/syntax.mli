@@ -52,8 +52,7 @@ module type S = sig
     | IfElse of expr annot * stmt annot * stmt annot option 
     | While of expr annot * stmt annot
     | Print of expr annot
-    (* TODO: handle "return;" *)
-    | Return of expr annot
+    | Return of expr annot option
     | Block of stmt annot list * scope_info
     | VarDecl of var annot * expr annot option
     | FunDef of var annot * var annot list * stmt annot list * scope_info
