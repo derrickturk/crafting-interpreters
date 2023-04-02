@@ -10,6 +10,7 @@ use crate::{
     env::{Env, Slot},
     srcloc::SrcLoc,
     syntax::{Expr, Stmt},
+    value::Value,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -426,12 +427,17 @@ impl Resolver {
         }
     }
 
-    pub fn intialize_env(&self, env: &Rc<Env>) {
-        for b in &self.builtins {
-            // do it here
+    #[inline]
+    pub fn initialize_env(&self) -> Rc<Env> {
+        let env = Env::new(self.scope.slots());
+        for (b, &(name, n, ptr)) in self.builtins.iter().zip(BUILTINS.iter()) {
+            env.set(b.frame, b.index, Value::BuiltinFun(name, n, ptr));
         }
+        env
     }
 
+    #[inline]
     pub fn update_env(&self, env: &Rc<Env>) {
+        env.ensure_slots(self.scope.slots())
     }
 }

@@ -13,19 +13,22 @@ use loxide::{Env, ErrorBundle, Resolver, run, lex, parse};
 fn run_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn Error>> {
     let mut source = String::new();
     File::open(path)?.read_to_string(&mut source)?;
+
     let prog = parse(lex(&source))?;
+
     let mut resolver = Resolver::new();
-    let pr = resolver.resolve(prog.clone());
-    dbg!(pr);
-    let global = Env::new();
-    global.register_builtins();
+    let prog = resolver.resolve(prog)?;
+
+    let global = resolver.initialize_env();
     Ok(run(&global, &prog)?)
 }
 
 #[inline]
-fn run_incremental(env: &Rc<Env>, src: &str
+fn run_incremental(resolver: &mut Resolver, env: &Rc<Env>, src: &str
   ) -> Result<(), ErrorBundle> {
     let prog = parse(lex(src))?;
+    let prog = resolver.resolve(prog)?;
+    resolver.update_env(env);
     Ok(run(env, &prog)?)
 }
 
@@ -33,15 +36,16 @@ fn run_prompt() -> Result<(), Box<dyn Error>> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut any_err = false;
-    let global = Env::new();
-    global.register_builtins();
+    let mut resolver = Resolver::new();
+    let global = resolver.initialize_env();
     loop {
         write!(&mut stdout, "> ")?;
         stdout.flush()?;
         let mut line = String::new();
         match stdin.read_line(&mut line)? {
             0 => break,
-            _ => if let Err(es) = run_incremental(&global, line.trim_end()) {
+            _ => if let Err(es) = run_incremental(
+              &mut resolver, &global, line.trim_end()) {
                 any_err = true;
                 eprint!("{}", es);
             },

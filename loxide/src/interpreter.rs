@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    env::Env,
+    env::{Env, Slot},
     error::{self, Error, ErrorDetails},
     syntax::*,
     value::*,
@@ -27,7 +27,7 @@ macro_rules! undef_error {
     };
 }
 
-pub fn eval(env: &Rc<Env>, expr: &Expr<String>) -> error::Result<Value> {
+pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
     match expr {
         Expr::Literal(v, _) => Ok(v.clone()),
 
@@ -139,20 +139,20 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<String>) -> error::Result<Value> {
         },
 
         Expr::Var(v, loc) => {
-            match env.get(&v) {
+            match env.get(v.frame, v.index) {
                 Some(val) => Ok(val.clone()),
-                None => Err(undef_error!(*loc, v.clone())),
+                None => Err(undef_error!(*loc, v.name.clone())),
             }
         },
 
         Expr::Assign(v, e, loc) => {
             let val = eval(env, e)?;
-            match env.get_mut(&v) {
+            match env.get_mut(v.frame, v.index) {
                 Some(mut dst) => {
                     *dst = val.clone();
                     Ok(val)
                 },
-                None => Err(undef_error!(*loc, v.clone())),
+                None => Err(undef_error!(*loc, v.name.clone())),
             }
         },
 
@@ -168,16 +168,9 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<String>) -> error::Result<Value> {
                         });
                     }
 
-                    let frame = closure.child();
+                    let frame = closure.child(def.3);
                     for (p, a) in def.1.iter().zip(args.iter()) {
-                        if !frame.declare(p.clone(), eval(env, a)?) {
-                            return Err(Error {
-                                loc: Some(*loc),
-                                lexeme: None,
-                                details: ErrorDetails::AlreadyDefined(
-                                  p.clone()),
-                            });
-                        }
+                        frame.set(p.frame, p.index, eval(env, a)?);
                     }
 
                     match run(&frame, &def.2) {
@@ -213,7 +206,7 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<String>) -> error::Result<Value> {
     }
 }
 
-pub fn exec(env: &Rc<Env>, stmt: &Stmt<String, ()>) -> error::Result<()> {
+pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
     match stmt {
         Stmt::Expr(e, _) => {
             eval(env, e)?;
@@ -256,50 +249,36 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<String, ()>) -> error::Result<()> {
             })
         },
 
-        Stmt::Block(body, (), _) => {
-            let frame = env.child();
+        Stmt::Block(body, slots, _) => {
+            let frame = env.child(*slots);
             for s in body {
                 exec(&frame, s)?;
             }
             Ok(())
         },
 
-        Stmt::VarDecl(v, init, loc) => {
+        Stmt::VarDecl(v, init, _) => {
             let val = if let Some(e) = init {
                 eval(env, e)?
             } else {
                 Value::Nil
             };
-            if env.declare(v.clone(), val) {
-                Ok(())
-            } else {
-                Err(Error {
-                    loc: Some(*loc),
-                    lexeme: Some("var".to_string()),
-                    details: ErrorDetails::AlreadyDefined(v.clone()),
-                })
-            }
+            env.set(v.frame, v.index, val);
+            Ok(())
         },
 
-        Stmt::FunDef(name, params, body, (), loc) => {
+        Stmt::FunDef(v, params, body, slots, _) => {
             let defn = Rc::new((
-              name.clone(), params.clone(), body.clone()));
+              v.name.clone(), params.clone(), body.clone(), *slots));
             let fun = Value::Fun(defn, env.clone());
-            if env.declare(name.clone(), fun) {
-                Ok(())
-            } else {
-                Err(Error {
-                    loc: Some(*loc),
-                    lexeme: None,
-                    details: ErrorDetails::AlreadyDefined(name.clone()),
-                })
-            }
+            env.set(v.frame, v.index, fun);
+            Ok(())
         },
     }
 }
 
 #[inline]
-pub fn run(env: &Rc<Env>, prog: &[Stmt<String, ()>]) -> error::Result<()> {
+pub fn run(env: &Rc<Env>, prog: &[Stmt<Slot, usize>]) -> error::Result<()> {
     for stmt in prog {
         exec(env, stmt)?;
     }

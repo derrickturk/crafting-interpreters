@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    env::Env,
+    env::{Env, Slot},
     syntax::Stmt,
 };
 
@@ -17,8 +17,7 @@ pub enum Value {
     Bool(bool),
     Number(f64),
     String(String),
-    // TODO: revisit on Stmt<String> -> Stmt<Slot> change
-    Fun(Rc<(String, Vec<String>, Vec<Stmt<String, ()>>)>, Rc<Env>),
+    Fun(Rc<(String, Vec<Slot>, Vec<Stmt<Slot, usize>>, usize)>, Rc<Env>),
     BuiltinFun(&'static str, usize, fn(Vec<Value>) -> Value),
 }
 

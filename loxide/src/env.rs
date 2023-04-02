@@ -1,11 +1,9 @@
 use std::{
     cell::{Ref, RefMut, RefCell,},
-    collections::hash_map::{Entry, HashMap},
     rc::Rc,
 };
 
 use crate::{
-    builtins::BUILTINS,
     value::Value,
 };
 
@@ -16,85 +14,89 @@ pub struct Slot {
     pub index: usize,
 }
 
+// this will all change
 #[derive(Clone, Debug)]
-pub struct Scope(RefCell<HashMap<String, Value>>);
+pub enum Env {
+    Global(RefCell<Vec<Option<Value>>>),
+    Local(RefCell<Vec<Value>>, Rc<Env>),
+}
 
-impl Scope {
-    pub fn new() -> Self {
-        Self(RefCell::new(HashMap::new()))
+impl Env {
+    #[inline]
+    pub fn new(slots: usize) -> Rc<Self> {
+        Rc::new(Env::Global(RefCell::new(vec![None; slots])))
     }
 
-    pub fn init(&self, var: String, value: Value) -> bool {
-        match self.0.borrow_mut().entry(var) {
-            Entry::Occupied(_) => false,
-            Entry::Vacant(v) => {
-                v.insert(value);
-                true
+    #[inline]
+    pub fn child(self: &Rc<Self>, slots: usize) -> Rc<Self> {
+        Rc::new(
+          Env::Local(RefCell::new(vec![Value::Nil; slots]), Rc::clone(self)))
+    }
+
+    pub fn get(&self, frame: usize, index: usize) -> Option<Ref<Value>> {
+        if frame == 0 {
+            match self {
+                Env::Global(slots) =>
+                    Ref::filter_map(slots.borrow(), |v| v[index].as_ref()).ok(),
+                Env::Local(slots, _) =>
+                    Some(Ref::map(slots.borrow(), |v| &v[index]))
+            }
+        } else {
+            match self {
+                Env::Global(_) => panic!("internal error: bad lookup"),
+                Env::Local(_, parent) => parent.get(frame - 1, index),
             }
         }
     }
 
-    pub fn overwrite(&self, var: String, value: Value) {
-        self.0.borrow_mut().insert(var, value);
-    }
-
-    pub fn get(&self, var: &str) -> Option<Ref<Value>> {
-        Ref::filter_map(self.0.borrow(), |s| s.get(var)).ok()
-    }
-
-    pub fn get_mut(&self, var: &str) -> Option<RefMut<Value>> {
-        RefMut::filter_map(self.0.borrow_mut(), |s| s.get_mut(var)).ok()
-    }
-}
-
-// this will all change
-#[derive(Clone, Debug)]
-pub enum Env {
-    Global(Scope),
-    Local(Scope, Rc<Env>),
-}
-
-impl Env {
-    pub fn new() -> Rc<Self> {
-        Rc::new(Env::Global(Scope::new()))
-    }
-
-    pub fn child(self: &Rc<Self>) -> Rc<Self> {
-        Rc::new(Env::Local(Scope::new(), Rc::clone(self)))
-    }
-
-    pub fn declare(&self, var: String, value: Value) -> bool {
-        match self {
-            Env::Global(globals) => {
-                globals.overwrite(var, value);
-                true
-            },
-            Env::Local(locals, _) => locals.init(var, value),
+    pub fn get_mut(&self, frame: usize, index: usize) -> Option<RefMut<Value>> {
+        if frame == 0 {
+            match self {
+                Env::Global(slots) =>
+                    RefMut::filter_map(slots.borrow_mut(),
+                      |v| v[index].as_mut()).ok(),
+                Env::Local(slots, _) =>
+                    Some(RefMut::map(slots.borrow_mut(), |v| &mut v[index]))
+            }
+        } else {
+            match self {
+                Env::Global(_) => panic!("internal error: bad lookup"),
+                Env::Local(_, parent) => parent.get_mut(frame - 1, index),
+            }
         }
     }
 
-    pub fn get(&self, var: &str) -> Option<Ref<Value>> {
-        match self {
-            Env::Global(globals) => globals.get(var),
-            Env::Local(locals, parent) =>
-                locals.get(var).or_else(|| parent.get(var)),
-        }
-    }
-
-    /* oddity: because borrow-checking is dynamic for Envs, we  take
-     * &self rather than &mut self here! */
-    pub fn get_mut(&self, var: &str) -> Option<RefMut<Value>> {
-        match self {
-            Env::Global(globals) => globals.get_mut(var),
-            Env::Local(locals, parent) =>
-                locals.get_mut(var).or_else(|| parent.get_mut(var)),
-        }
+    pub fn set(&self, frame: usize, index: usize, value: Value) {
+        if frame == 0 {
+            match self {
+                Env::Global(slots) =>
+                    slots.borrow_mut()[index] = Some(value),
+                Env::Local(slots, _) =>
+                    slots.borrow_mut()[index] = value,
+            }
+        } else {
+            match self {
+                Env::Global(_) => panic!("internal error: bad lookup"),
+                Env::Local(_, parent) => parent.set(frame - 1, index, value),
+            }
+        };
     }
 
     #[inline]
-    pub fn register_builtins(&self) {
-        for (name, arity, ptr) in BUILTINS {
-            self.declare(name.to_string(), Value::BuiltinFun(name, arity, ptr));
+    pub fn ensure_slots(&self, slots: usize) {
+        match self {
+            Env::Global(v) => {
+                let mut v = v.borrow_mut();
+                while v.len() < slots {
+                    v.push(None);
+                }
+            },
+            Env::Local(v, _) => {
+                let mut v = v.borrow_mut();
+                while v.len() < slots {
+                    v.push(Value::Nil);
+                }
+            },
         }
     }
 }
