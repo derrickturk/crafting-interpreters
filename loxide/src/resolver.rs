@@ -1,6 +1,6 @@
 use std::{
     collections::hash_map::{HashMap, Entry},
-    mem,
+    ptr,
     rc::Rc,
 };
 
@@ -14,153 +14,270 @@ use crate::{
 };
 
 #[derive(Copy, Clone, Debug)]
-enum VarState {
+enum FunKind {
+    TopLevel,
+    Function,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum GlobalVarState {
     Declared,
     Defined,
     Deferred,
 }
 
 #[derive(Copy, Clone, Debug)]
-enum FunKind {
-    Function,
+enum LocalVarState {
+    Declared,
+    Defined,
+}
+
+impl From<LocalVarState> for GlobalVarState {
+    #[inline]
+    fn from(other: LocalVarState) -> Self {
+        match other {
+            LocalVarState::Declared => GlobalVarState::Declared,
+            LocalVarState::Defined => GlobalVarState::Defined,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+struct GlobalVarRecord {
+    index: usize,
+    state: GlobalVarState,
+}
+
+#[derive(Copy, Clone, Debug)]
+struct FunctionVarRecord {
+    index: usize,
+    state: LocalVarState,
+}
+
+// TODO
+#[derive(Copy, Clone, Debug)]
+struct BlockVarRecord {
+    index: usize,
+    state: LocalVarState,
 }
 
 #[derive(Clone, Debug)]
-struct Scope {
-    slots: usize,
-    locals: HashMap<String, (usize, VarState)>,
-    kind: Option<FunKind>,
-    parent: Option<Box<Scope>>,
+struct GlobalScope {
+    pub slots: usize,
+    pub globals: HashMap<String, GlobalVarRecord>,
+}
+
+impl GlobalScope {
+    #[inline]
+    fn make_slot(&mut self, name: String, state: GlobalVarState) -> Slot {
+        let index = self.slots;
+        self.slots += 1;
+        self.globals.insert(name.clone(), GlobalVarRecord { index, state });
+        Slot { name, frame: 0, index }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct FunctionScope {
+    pub slots: usize,
+    pub locals: HashMap<String, FunctionVarRecord>,
+    pub parent: Box<Scope>,
+}
+
+impl FunctionScope {
+    #[inline]
+    fn make_slot(&mut self, name: String, state: LocalVarState) -> Slot {
+        let index = self.slots;
+        self.slots += 1;
+        self.locals.insert(name.clone(), FunctionVarRecord { index, state });
+        Slot { name, frame: 0, index }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct BlockScope {
+    pub locals: HashMap<String, BlockVarRecord>,
+    pub parent: Box<Scope>,
+    pub parent_kind: FunKind,
+}
+
+impl BlockScope {
+    #[inline]
+    fn make_slot(&mut self, name: String, state: LocalVarState) -> Slot {
+        let mut parent_frame = &mut *self.parent;
+        loop {
+            match parent_frame {
+                Scope::Global(g) => {
+                    return g.make_slot(name, state.into());
+                },
+
+                Scope::Function(f) => {
+                    return f.make_slot(name, state.into());
+                },
+
+                Scope::Block(b) => {
+                    parent_frame = &mut *b.parent;
+                },
+            };
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+enum Scope {
+    Global(GlobalScope),
+    Function(FunctionScope),
+    Block(BlockScope),
 }
 
 // most methods go here!
 impl Scope {
     #[inline]
-    fn new() -> Self {
-        Self {
+    fn global() -> Self {
+        Self::Global(GlobalScope {
+            slots: 0,
+            globals: HashMap::new(),
+        })
+    }
+
+    #[inline]
+    fn enter_function(self) -> Self {
+        Self::Function(FunctionScope {
             slots: 0,
             locals: HashMap::new(),
-            kind: None,
-            parent: None,
+            parent: Box::new(self),
+        })
+    }
+
+    #[inline]
+    fn enter_block(self) -> Self {
+        let parent_kind = self.kind();
+        Self::Block(BlockScope {
+            locals: HashMap::new(),
+            parent: Box::new(self),
+            parent_kind,
+        })
+    }
+
+    #[inline]
+    fn exit(self) -> Self {
+        match self {
+            Self::Global(_) => self,
+            Self::Function(f) => *f.parent,
+            Self::Block(b) => *b.parent,
         }
     }
 
     #[inline]
-    fn enter(&mut self) {
-        let kind = self.kind;
-        let mut child = Scope::new();
-        // inherit kind (e.g. for blocks)
-        child.kind = kind;
-        // the "child" becomes the "parent"
-        mem::swap(self, &mut child);
-        self.parent = Some(Box::new(child));
-    }
-
-    #[inline]
-    fn exit(&mut self) {
-        match self.parent.take() {
-            None => { },
-            Some(p) => {
-                *self = *p;
-            },
+    fn kind(&self) -> FunKind {
+        match self {
+            Self::Global(_) => FunKind::TopLevel,
+            Self::Function(_) => FunKind::Function,
+            Self::Block(b) => b.parent_kind,
         }
-    }
-
-    #[inline]
-    fn global(&self) -> bool {
-        self.parent.is_none()
     }
 
     #[inline]
     fn slots(&self) -> usize {
-        self.slots
+        match self {
+            Self::Global(g) => g.slots,
+            Self::Function(f) => f.slots,
+            Self::Block(_) => 0,
+        }
     }
 
     fn resolve(&mut self, name: String, loc: SrcLoc) -> Result<Slot, Error> {
-        let is_global = self.global();
-        match self.locals.get_mut(&name) {
-            Some((_, VarState::Declared)) if !is_global =>
-                return Err(Error {
-                    loc: Some(loc),
-                    lexeme: None,
-                    details: ErrorDetails::CircularDefinition(name),
-                }),
-            Some((index, _)) =>
-                return Ok(Slot {
-                    name,
-                    frame: 0,
-                    index: *index,
-                }),
-            None => { },
-        };
-
-        match &mut self.parent {
-            Some(p) => {
-                let mut slot = p.resolve(name, loc)?;
-                slot.frame += 1;
-                Ok(slot)
+        match self {
+            // globals can be circular, and failed resolution defers
+            Self::Global(g) => {
+                if let Some(rec) = g.globals.get(&name) {
+                    Ok(Slot { name, frame: 0, index: rec.index })
+                } else {
+                    Ok(g.make_slot(name.clone(), GlobalVarState::Deferred))
+                }
             },
-            None => {
-                let index = self.slots;
-                self.slots += 1;
-                self.locals.insert(name.clone(), (index, VarState::Deferred));
-                Ok(Slot {
-                    name,
-                    frame: 0,
-                    index,
-                })
-            }
+
+            Self::Function(f) => {
+                if let Some(rec) = f.locals.get(&name) {
+                    match rec.state {
+                        LocalVarState::Defined => {
+                            Ok(Slot { name, frame: 0, index: rec.index })
+                        },
+                        LocalVarState::Declared => {
+                            Err(Error {
+                                loc: Some(loc),
+                                lexeme: None,
+                                details: ErrorDetails::UndefinedVariable(name),
+                            })
+                        },
+                    }
+                } else {
+                    let mut slot = f.parent.resolve(name, loc)?;
+                    slot.frame += 1;
+                    Ok(slot)
+                }
+            },
+
+            Self::Block(b) => {
+                if let Some(rec) = b.locals.get(&name) {
+                    match rec.state {
+                        LocalVarState::Defined => {
+                            Ok(Slot { name, frame: 0, index: rec.index })
+                        },
+                        LocalVarState::Declared => {
+                            Err(Error {
+                                loc: Some(loc),
+                                lexeme: None,
+                                details: ErrorDetails::UndefinedVariable(name),
+                            })
+                        },
+                    }
+                } else {
+                    b.parent.resolve(name, loc)
+                }
+            },
         }
     }
 
     fn declare(&mut self, name: String, loc: SrcLoc) -> Result<Slot, Error> {
-        if self.global() {
-            match self.locals.entry(name.clone()) {
-                Entry::Occupied(mut o) => {
-                    o.get_mut().1 = VarState::Declared;
-                    Ok(Slot {
-                        name,
-                        frame: 0,
-                        index: o.get().0,
-                    })
-                },
+        match self {
+            Self::Global(g) => {
+                if let Some(rec) = g.globals.get_mut(&name) {
+                    rec.state = GlobalVarState::Declared;
+                    Ok(Slot { name, frame: 0, index: rec.index })
+                } else {
+                    Ok(g.make_slot(name.clone(), GlobalVarState::Declared))
+                }
+            },
 
-                Entry::Vacant(v) => {
-                    let index = self.slots;
-                    self.slots += 1;
-                    v.insert((index, VarState::Declared));
-                    Ok(Slot {
-                        name,
-                        frame: 0,
-                        index,
-                    })
-                },
-            }
-        } else {
-            match self.locals.entry(name.clone()) {
-                Entry::Occupied(_) => {
+            Self::Function(f) => {
+                if f.locals.contains_key(&name) {
                     Err(Error {
                         loc: Some(loc),
                         lexeme: None,
                         details: ErrorDetails::AlreadyDefined(name),
                     })
-                },
+                } else {
+                    Ok(f.make_slot(name.clone(), LocalVarState::Declared))
+                }
+            },
 
-                Entry::Vacant(v) => {
-                    let index = self.slots;
-                    self.slots += 1;
-                    v.insert((index, VarState::Declared));
-                    Ok(Slot {
-                        name,
-                        frame: 0,
-                        index,
+            Self::Block(b) => {
+                if b.locals.contains_key(&name) {
+                    Err(Error {
+                        loc: Some(loc),
+                        lexeme: None,
+                        details: ErrorDetails::AlreadyDefined(name),
                     })
-                },
-            }
+                } else {
+                    Ok(b.make_slot(name.clone(), LocalVarState::Declared))
+                }
+            },
         }
     }
 
     fn define(&mut self, name: String, loc: SrcLoc) -> Result<Slot, Error> {
+        /*
         match self.locals.entry(name.clone()) {
             Entry::Occupied(mut o) => {
                 match o.get_mut() {
@@ -193,6 +310,8 @@ impl Scope {
                 })
             },
         }
+        */
+        todo!()
     }
 }
 
@@ -205,7 +324,7 @@ pub struct Resolver {
 
 impl Resolver {
     pub fn new() -> Self {
-        let mut scope = Scope::new();
+        let mut scope = Scope::global();
         let mut builtins = Vec::new();
         for (name, _, _) in &BUILTINS {
             builtins.push(
@@ -351,26 +470,30 @@ impl Resolver {
             },
 
             Stmt::Return(e, loc) => {
-                if let Some(_) = self.scope.kind {
-                    match e {
-                        Some(e) =>
-                            Ok(Stmt::Return(Some(self.resolve_expr(e)?), loc)),
-                        None =>
-                            Ok(Stmt::Return(None, loc)),
-                    }
-                } else {
-                    let mut es = ErrorBundle::new();
-                    es.push(Error {
-                        loc: Some(loc),
-                        lexeme: Some("return".to_string()),
-                        details: ErrorDetails::InvalidReturn,
-                    });
-                    Err(es)
+                match self.scope.kind() {
+                    FunKind::Function => {
+                        match e {
+                            Some(e) =>
+                                Ok(Stmt::Return(Some(self.resolve_expr(e)?), loc)),
+                            None =>
+                                Ok(Stmt::Return(None, loc)),
+                        }
+                    },
+
+                    _ => {
+                        let mut es = ErrorBundle::new();
+                        es.push(Error {
+                            loc: Some(loc),
+                            lexeme: Some("return".to_string()),
+                            details: ErrorDetails::InvalidReturn,
+                        });
+                        Err(es)
+                    },
                 }
             },
 
             Stmt::Block(body, (), loc) => {
-                self.scope.enter();
+                self.enter_block();
                 let mut r_body = Vec::new();
                 let mut errs = ErrorBundle::new();
                 for stmt in body {
@@ -379,10 +502,10 @@ impl Resolver {
                         Err(es) => errs.append(es),
                     };
                 }
-                let slots = self.scope.slots();
-                self.scope.exit();
+                self.exit_scope();
                 if errs.is_empty() {
-                    Ok(Stmt::Block(r_body, slots, loc))
+                    // TODO: block shouldn't carry slots
+                    Ok(Stmt::Block(r_body, 0, loc))
                 } else {
                     Err(errs)
                 }
@@ -413,8 +536,7 @@ impl Resolver {
                         errs.push(e);
                     },
                 };
-                self.scope.enter();
-                self.scope.kind = Some(FunKind::Function);
+                self.enter_function();
                 let mut r_params = Vec::new();
                 for p in params {
                     match self.scope.define(p, loc) {
@@ -430,7 +552,7 @@ impl Resolver {
                     };
                 }
                 let slots = self.scope.slots();
-                self.scope.exit();
+                self.exit_scope();
                 if errs.is_empty() {
                     Ok(Stmt::FunDef(v.unwrap(), r_params, r_body, slots, loc))
                 } else {
@@ -469,5 +591,29 @@ impl Resolver {
     #[inline]
     pub fn update_env(&self, env: &Rc<Env>) {
         env.ensure_slots(self.scope.slots())
+    }
+
+    /* these suck and I hate them. technically they could blow up if enter_*
+     *   panics due to OOM but at that point the world is on fire
+     *   so <shrug emoji>
+     * but no way in hell am I adding yet another Rc<RefCell> shitshow
+     */
+
+    fn enter_block(&mut self) {
+        let parent = unsafe { ptr::read(&self.scope) };
+        let child = parent.enter_block();
+        unsafe { ptr::write(&mut self.scope, child) };
+    }
+
+    fn enter_function(&mut self) {
+        let parent = unsafe { ptr::read(&self.scope) };
+        let child = parent.enter_function();
+        unsafe { ptr::write(&mut self.scope, child) };
+    }
+
+    fn exit_scope(&mut self) {
+        let child = unsafe { ptr::read(&self.scope) };
+        let parent = child.exit();
+        unsafe { ptr::write(&mut self.scope, parent) };
     }
 }
