@@ -248,10 +248,9 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
             })
         },
 
-        Stmt::Block(body, slots, _) => {
-            let frame = env.child(*slots);
+        Stmt::Block(body, _, _) => {
             for s in body {
-                exec(&frame, s)?;
+                exec(env, s)?;
             }
             Ok(())
         },

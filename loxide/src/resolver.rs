@@ -1,5 +1,5 @@
 use std::{
-    collections::hash_map::{HashMap, Entry},
+    collections::hash_map::HashMap,
     ptr,
     rc::Rc,
 };
@@ -108,11 +108,19 @@ impl BlockScope {
         loop {
             match parent_frame {
                 Scope::Global(g) => {
-                    return g.make_slot(name, state.into());
+                    let index = g.slots;
+                    g.slots += 1;
+                    self.locals.insert(name.clone(),
+                      BlockVarRecord { index, state });
+                    return Slot { name, frame: 0, index };
                 },
 
                 Scope::Function(f) => {
-                    return f.make_slot(name, state.into());
+                    let index = f.slots;
+                    f.slots += 1;
+                    self.locals.insert(name.clone(),
+                      BlockVarRecord { index, state });
+                    return Slot { name, frame: 0, index };
                 },
 
                 Scope::Block(b) => {
@@ -277,41 +285,67 @@ impl Scope {
     }
 
     fn define(&mut self, name: String, loc: SrcLoc) -> Result<Slot, Error> {
-        /*
-        match self.locals.entry(name.clone()) {
-            Entry::Occupied(mut o) => {
-                match o.get_mut() {
-                    (_, VarState::Defined) => {
-                        Err(Error {
-                            loc: Some(loc),
-                            lexeme: None,
-                            details: ErrorDetails::AlreadyDefined(name),
-                        })
-                    },
-                    (index, state) => {
-                        *state = VarState::Defined;
-                        Ok(Slot {
-                            name,
-                            frame: 0,
-                            index: *index,
-                        })
-                    },
+        match self {
+            Self::Global(g) => {
+                if let Some(rec) = g.globals.get_mut(&name) {
+                    match rec.state {
+                        GlobalVarState::Defined => {
+                            Err(Error {
+                                loc: Some(loc),
+                                lexeme: None,
+                                details: ErrorDetails::AlreadyDefined(name),
+                            })
+                        },
+                        _ => {
+                            rec.state = GlobalVarState::Defined;
+                            Ok(Slot { name, frame: 0, index: rec.index })
+                        },
+                    }
+                } else {
+                    Ok(g.make_slot(name.clone(), GlobalVarState::Defined))
                 }
             },
 
-            Entry::Vacant(v) => {
-                let index = self.slots;
-                self.slots += 1;
-                v.insert((index, VarState::Defined));
-                Ok(Slot {
-                    name,
-                    frame: 0,
-                    index,
-                })
+            Self::Function(f) => {
+                if let Some(rec) = f.locals.get_mut(&name) {
+                    match rec.state {
+                        LocalVarState::Defined => {
+                            Err(Error {
+                                loc: Some(loc),
+                                lexeme: None,
+                                details: ErrorDetails::AlreadyDefined(name),
+                            })
+                        },
+                        _ => {
+                            rec.state = LocalVarState::Defined;
+                            Ok(Slot { name, frame: 0, index: rec.index })
+                        },
+                    }
+                } else {
+                    Ok(f.make_slot(name.clone(), LocalVarState::Defined))
+                }
+            },
+
+            Self::Block(b) => {
+                if let Some(rec) = b.locals.get_mut(&name) {
+                    match rec.state {
+                        LocalVarState::Defined => {
+                            Err(Error {
+                                loc: Some(loc),
+                                lexeme: None,
+                                details: ErrorDetails::AlreadyDefined(name),
+                            })
+                        },
+                        _ => {
+                            rec.state = LocalVarState::Defined;
+                            Ok(Slot { name, frame: 0, index: rec.index })
+                        },
+                    }
+                } else {
+                    Ok(b.make_slot(name.clone(), LocalVarState::Defined))
+                }
             },
         }
-        */
-        todo!()
     }
 }
 
