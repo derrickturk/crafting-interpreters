@@ -94,8 +94,19 @@ public class Interpreter {
 
         public object? VisitLiteral(Literal e) => e.Value;
 
-        public object VisitUnOpApp(UnOpApp e) =>
-            !ValueTruthy(e.Operand.Accept(this));
+        public object VisitUnOpApp(UnOpApp e)
+        {
+            return (e.Operator, e.Operand.Accept(this)) switch
+            {
+                (UnOp.Negate, double d) => -d,
+                (UnOp.Negate, _) =>
+                    throw new RuntimeError(
+                      e.Location, "operand to - must be number"),
+                (UnOp.Not, var v) => !ValueTruthy(v),
+                _ => throw new InvalidOperationException(
+                  "invalid unary operator"),
+            };
+        }
 
         public object? VisitBinOpApp(BinOpApp e)
         {
