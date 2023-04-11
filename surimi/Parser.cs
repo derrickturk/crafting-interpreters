@@ -169,7 +169,7 @@ public class Parser {
             return new Block(new List<Stmt> {
                 initializer,
                 body,
-            }, init_tok!.Value.Location);
+            }, initializer.Location);
 
         return body;
     }

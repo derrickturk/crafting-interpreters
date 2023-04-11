@@ -43,6 +43,8 @@ public class Interpreter {
         false => "false",
         double d => d.ToString(),
         string s => s,
+        LoxFunction f => $"<function {f.Definition.Name.Name}>",
+        Builtin b => $"<built-in function {b.Name}>",
         _ => throw new InvalidOperationException("invalid runtime value"),
     };
 
