@@ -25,7 +25,7 @@ internal class Resolver: Traverser {
 
     public override ValueTuple VisitVar(Var v)
     {
-        if (ScopeStates.ContainsKey(v.Name)
+        if (!AtGlobalScope && ScopeStates.ContainsKey(v.Name)
           && ScopeStates[v.Name] == VariableState.Declared) {
             _onError.Error(v.Location,
               $"cannot use variable {v.Name} in its own initializer");
