@@ -60,6 +60,16 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
         var args = String.Join(", ", e.Arguments.Select(a => a.Accept(this)));
         return $"{e.Callee.Accept(this)}({args})";
     }
+
+    public string VisitPropertyGet(PropertyGet e)
+    {
+        return $"{e.Object.Accept(this)}.{e.Name.Accept(this)}";
+    }
+
+    public string VisitPropertySet(PropertySet e)
+    {
+        return $"{e.Object.Accept(this)}.{e.Name.Accept(this)} = {e.Value.Accept(this)}";
+    }
 }
 
 public class StmtPrettyPrinter: StmtVisitor<string> {

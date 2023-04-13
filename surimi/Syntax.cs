@@ -6,7 +6,6 @@ public enum UnOp {
 }
 
 public enum BinOp {
-    // Comma, Member, // for later
     Minus, Plus, DividedBy, Times,
     NotEq, EqEq, Gt, GtEq, Lt, LtEq,
     And, Or,
@@ -62,6 +61,22 @@ public record class Call (Expr Callee, List<Expr> Arguments, SrcLoc Location)
     public override T Accept<T>(ExprVisitor<T> visitor)
     {
         return visitor.VisitCall(this);
+    }
+}
+
+public record class PropertyGet (Expr Object, Var Name, SrcLoc Location)
+  : Expr (Location) {
+    public override T Accept<T>(ExprVisitor<T> visitor)
+    {
+        return visitor.VisitPropertyGet(this);
+    }
+}
+
+public record class PropertySet (Expr Object, Var Name, Expr Value,
+  SrcLoc Location): Expr (Location) {
+    public override T Accept<T>(ExprVisitor<T> visitor)
+    {
+        return visitor.VisitPropertySet(this);
     }
 }
 

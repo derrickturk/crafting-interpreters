@@ -7,6 +7,8 @@ public interface ExprVisitor<T> {
     public T VisitVar(Var e);
     public T VisitAssign(Assign e);
     public T VisitCall(Call e);
+    public T VisitPropertyGet(PropertyGet e);
+    public T VisitPropertySet(PropertySet e);
 }
 
 public interface StmtVisitor<T> {
@@ -39,6 +41,19 @@ public class Traverser: ExprVisitor<ValueTuple>, StmtVisitor<ValueTuple> {
     public virtual ValueTuple VisitAssign(Assign e)
     {
         e.Variable.Accept(this);
+        e.Value.Accept(this);
+        return ValueTuple.Create();
+    }
+
+    public virtual ValueTuple VisitPropertyGet(PropertyGet e)
+    {
+        e.Object.Accept(this);
+        return ValueTuple.Create();
+    }
+
+    public virtual ValueTuple VisitPropertySet(PropertySet e)
+    {
+        e.Object.Accept(this);
         e.Value.Accept(this);
         return ValueTuple.Create();
     }

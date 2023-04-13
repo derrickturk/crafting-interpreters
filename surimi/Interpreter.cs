@@ -200,6 +200,31 @@ public class Interpreter {
             }
         }
 
+        public object? VisitPropertyGet(PropertyGet e)
+        {
+            if (e.Object.Accept(this) is LoxObject o) {
+                if (!o.Properties.ContainsKey(e.Name.Name))
+                    throw new RuntimeError(
+                      e.Name.Location, "undefined property");
+                return o.Properties[e.Name.Name];
+            } else {
+                throw new RuntimeError(
+                  e.Object.Location, "property access on non-object");
+            }
+        }
+
+        public object? VisitPropertySet(PropertySet e)
+        {
+            if (e.Object.Accept(this) is LoxObject o) {
+                var val = e.Value.Accept(this);
+                o.Properties[e.Name.Name] = val;
+                return val;
+            } else {
+                throw new RuntimeError(
+                  e.Object.Location, "property access on non-object");
+            }
+        }
+
         public ValueTuple VisitExprStmt(ExprStmt s)
         {
             s.Expression.Accept(this);
@@ -291,12 +316,14 @@ public class Interpreter {
     private record class LoxClass (String Name): Callable {
         public int Arity => 0;
 
-        public object? Call(List<object?> arguments) => new LoxObject(this);
+        public object? Call(List<object?> arguments) =>
+          new LoxObject(this, new Dictionary<string, object?>());
 
         public override string ToString() => $"<class {Name}>";
     }
 
-    private record class LoxObject (LoxClass Class) {
+    private record class LoxObject (LoxClass Class,
+      Dictionary<string, object?> Properties) {
         public override string ToString() => $"<{Class.Name} object>";
     }
 

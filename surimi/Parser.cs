@@ -242,11 +242,17 @@ public class Parser {
         Token? eq;
         if ((eq = Match(TokenType.Eq)) != null) {
             var val = Assignment();
-            if (e is Var v)
-                return new Assign(v, val, v.Location);
-            _onError.Error(eq.Value.Location, $" at '{eq.Value.Lexeme}'",
-              $"invalid assignment target: {e.PrettyPrint()}");
-            throw new ParseError();
+            switch (e) {
+                case Var v:
+                    return new Assign(v, val, v.Location);
+                case PropertyGet g:
+                    return new PropertySet(g.Object, g.Name, val, g.Location);
+                default:
+                    _onError.Error(eq.Value.Location,
+                      $" at '{eq.Value.Lexeme}'",
+                      $"invalid assignment target: {e.PrettyPrint()}");
+                    throw new ParseError();
+            }
         }
 
         return e;
@@ -295,12 +301,16 @@ public class Parser {
     {
         var e = Primary();
         Token? tok;
-        while ((tok = Match(TokenType.LParen /*, ... */)) != null) {
+        while ((tok = Match(TokenType.LParen, TokenType.Dot)) != null) {
             switch (tok.Value.Type) {
                 case TokenType.LParen:
                     e = CallRest(e, tok.Value);
                     break;
-                /* ... */
+                case TokenType.Dot:
+                    Token name = Require("property name", TokenType.Ident);
+                    e = new PropertyGet(e, new Var(name.Lexeme, name.Location),
+                      tok.Value.Location);
+                    break;
                 default:
                     throw new InvalidOperationException(
                       "internal error: impossible result from Match");
