@@ -9,6 +9,7 @@ internal enum VariableState {
 internal enum FunctionKind {
     None,
     Function,
+    Initializer,
     Method,
 }
 
@@ -53,8 +54,13 @@ internal class Resolver: Traverser {
     {
         if (_functionKind == FunctionKind.None)
             _onError.Error(s.Location, "return outside function/method body");
-        if (s.Expression != null)
+        if (s.Expression != null) {
+            if (_functionKind == FunctionKind.Initializer) {
+                _onError.Error(s.Expression.Location,
+                  "return value from initializer");
+            }
             s.Expression.Accept(this);
+        }
         return ValueTuple.Create();
     }
 
@@ -91,12 +97,16 @@ internal class Resolver: Traverser {
     {
         Declare(s.Name);
         Define(s.Name.Name);
-        var currentFunctionKind = _functionKind;
         var currentClassKind = _classKind;
-        _functionKind = FunctionKind.Method;
         _classKind = ClassKind.Class;
-        foreach (var method in s.Methods)
+        var currentFunctionKind = _functionKind;
+        foreach (var method in s.Methods) {
+            if (method.Name.Name == "init")
+                _functionKind = FunctionKind.Initializer;
+            else
+                _functionKind = FunctionKind.Method;
             ResolveFunDefOrMethod(method);
+        }
         _functionKind = currentFunctionKind;
         _classKind = currentClassKind;
         return ValueTuple.Create();
@@ -118,7 +128,8 @@ internal class Resolver: Traverser {
         PushScope();
         /* ok, I'm deviating from the book here: we'll make 'this' the first
          * slot in the function environment */
-        if (_functionKind == FunctionKind.Method)
+        if (_functionKind == FunctionKind.Method
+                || _functionKind == FunctionKind.Initializer)
             Define("this");
         foreach (var p in s.Parameters)
             Define(p.Name);

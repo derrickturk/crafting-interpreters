@@ -308,17 +308,29 @@ public class Interpreter {
         public object? Call(List<object?> arguments)
         {
             var frameEnv = new Environment(Env);
-            if (This != null)
+
+            bool isInitializer = false;
+            if (This != null) {
                 frameEnv.Declare(new Var("this", Definition.Location), This);
+                isInitializer = Definition.Name.Name == "init";
+            }
+
             foreach (var (param, arg) in Definition.Parameters.Zip(arguments))
                 frameEnv.Declare(param, arg);
+
             var frameVisitor = new EvalExecVisitor(frameEnv, VariableScopesOut);
             try {
                 foreach (var s in Definition.Body)
                     s.Accept(frameVisitor);
             } catch (ReturnException r) {
+                if (isInitializer)
+                    return This;
                 return r.Result;
             }
+
+            if (isInitializer)
+                return This;
+
             return null;
         }
 
