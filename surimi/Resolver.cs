@@ -164,8 +164,10 @@ internal class Resolver: Traverser {
         if (_functionKind == FunctionKind.Method
                 || _functionKind == FunctionKind.Initializer)
             Define("this");
-        foreach (var p in s.Parameters)
+        foreach (var p in s.Parameters) {
+            Declare(p);
             Define(p.Name);
+        }
         foreach (var stmt in s.Body)
             stmt.Accept(this);
         PopScope();
