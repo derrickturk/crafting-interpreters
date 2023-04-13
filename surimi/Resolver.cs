@@ -16,6 +16,7 @@ internal enum FunctionKind {
 internal enum ClassKind {
     None,
     Class,
+    SubClass,
 }
 
 internal class Resolver: Traverser {
@@ -38,7 +39,7 @@ internal class Resolver: Traverser {
             _onError.Error(v.Location,
               $"cannot use variable {v.Name} in its own initializer");
         }
-        ResolveVarOrThis(v, v.Name);
+        ResolveVarLike(v, v.Name);
         return ValueTuple.Create();
     }
 
@@ -46,7 +47,24 @@ internal class Resolver: Traverser {
     {
         if (_classKind == ClassKind.None)
             _onError.Error(e.Location, "this outside class definition");
-        ResolveVarOrThis(e, "this");
+        ResolveVarLike(e, "this");
+        return ValueTuple.Create();
+    }
+
+    public override ValueTuple VisitSuperGet(SuperGet e)
+    {
+        switch (_classKind) {
+            case ClassKind.None:
+                _onError.Error(e.Location, "super outside class definition");
+                break;
+            case ClassKind.Class:
+                _onError.Error(e.Location, "super in class with no superclass");
+                break;
+            case ClassKind.SubClass:
+                // TODO: this seems dum
+                ResolveVarLike(e, "super");
+                break;
+        }
         return ValueTuple.Create();
     }
 
@@ -103,11 +121,13 @@ internal class Resolver: Traverser {
             if (s.Super.Name == s.Name.Name)
                 _onError.Error(s.Super.Location,
                   $"cannot use class {s.Name.Name} as its own superclass");
-            ResolveVarOrThis(s.Super, s.Super.Name);
+            ResolveVarLike(s.Super, s.Super.Name);
+            PushScope();
+            Define("super");
         }
 
         var currentClassKind = _classKind;
-        _classKind = ClassKind.Class;
+        _classKind = s.Super == null ? ClassKind.Class : ClassKind.SubClass;
         var currentFunctionKind = _functionKind;
         foreach (var method in s.Methods) {
             if (method.Name.Name == "init")
@@ -118,6 +138,9 @@ internal class Resolver: Traverser {
         }
         _functionKind = currentFunctionKind;
         _classKind = currentClassKind;
+
+        if (s.Super != null)
+            PopScope();
 
         return ValueTuple.Create();
     }
@@ -173,7 +196,7 @@ internal class Resolver: Traverser {
         ScopeStates[v] = VariableState.Defined;
     }
 
-    private void ResolveVarOrThis(Expr e, string name)
+    private void ResolveVarLike(Expr e, string name)
     {
         int i = 0;
         foreach (var frame in _stateStack) {

@@ -87,6 +87,13 @@ public record class This (SrcLoc Location): Expr (Location) {
     }
 }
 
+public record class SuperGet (Var Name, SrcLoc Location): Expr (Location) {
+    public override T Accept<T>(ExprVisitor<T> visitor)
+    {
+        return visitor.VisitSuperGet(this);
+    }
+}
+
 public abstract record class Stmt (SrcLoc Location) {
     public abstract T Accept<T>(StmtVisitor<T> visitor);
     public string PrettyPrint() => Accept(new StmtPrettyPrinter());

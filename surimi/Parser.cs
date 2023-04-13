@@ -102,8 +102,8 @@ public class Parser {
         Require("expected '{'", TokenType.LBrace);
         List<FunDef> methods = new List<FunDef>();
         while (!Check(TokenType.RBrace) && !AtEOF) {
-            var method_name = Require("expected method name", TokenType.Ident);
-            methods.Add(FunDefOrMethodRest(method_name));
+            var methodName = Require("expected method name", TokenType.Ident);
+            methods.Add(FunDefOrMethodRest(methodName));
         }
         Require("expected '}'", TokenType.RBrace);
         return new ClassDef(new Var(name.Lexeme, name.Location),
@@ -370,6 +370,15 @@ public class Parser {
 
         if ((tok = Match(TokenType.Ident)) != null)
             return new Var(tok.Value.Lexeme, tok.Value.Location);
+
+        if ((tok = Match(TokenType.Super)) != null) {
+            Require("expected '.'", TokenType.Dot);
+            Token methodName = Require("expected superclass method name",
+              TokenType.Ident);
+            return new SuperGet(
+              new Var(methodName.Lexeme, methodName.Location),
+              tok.Value.Location);
+        }
 
         if (Match(TokenType.LParen) != null) {
             var e = Expression();

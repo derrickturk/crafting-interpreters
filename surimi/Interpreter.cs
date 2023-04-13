@@ -180,11 +180,6 @@ public class Interpreter {
             return _env[e, _scopesOut[e]];
         }
 
-        public object? VisitThis(This e)
-        {
-            return _env[new Var("this", e.Location), _scopesOut[e]];
-        }
-
         public object? VisitAssign(Assign e)
         {
             var val = e.Value.Accept(this);
@@ -230,6 +225,25 @@ public class Interpreter {
                 throw new RuntimeError(
                   e.Object.Location, "property access on non-object");
             }
+        }
+
+        public object? VisitThis(This e)
+        {
+            return _env[new Var("this", e.Location), _scopesOut[e]];
+        }
+
+        public object? VisitSuperGet(SuperGet e)
+        {
+            var scopesToSuper = _scopesOut[e];
+            LoxClass superClass = (LoxClass)_env[
+              new Var("super", e.Location), scopesToSuper]!; 
+            // uggh
+            LoxObject o = (LoxObject)_env[
+              new Var("this", e.Location), scopesToSuper - 1]!;
+            LoxFunction? method = null;
+            if (!superClass.TryGetMethod(e.Name.Name, out method))
+                throw new RuntimeError(e.Name.Location, "undefined property");
+            return method.Bind(o);
         }
 
         public ValueTuple VisitExprStmt(ExprStmt s)
@@ -298,10 +312,20 @@ public class Interpreter {
             }
 
             _env.Declare(s.Name, null);
+
+            if (superClass != null) {
+                _env = new Environment(_env);
+                _env.Declare(new Var("super", s.Location), superClass);
+            }
+
             var methods = new Dictionary<string, LoxFunction>();
             foreach (var method in s.Methods)
                 methods[method.Name.Name] = new LoxFunction(method,
                   _env, _scopesOut, null);
+
+            if (superClass != null)
+                _env = _env.Parent!;
+
             _env[s.Name] = new LoxClass(s.Name.Name, superClass, methods);
 
             return ValueTuple.Create();

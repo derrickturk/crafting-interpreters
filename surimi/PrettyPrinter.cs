@@ -75,6 +75,11 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
     {
         return "this";
     }
+
+    public string VisitSuperGet(SuperGet e)
+    {
+        return $"super.{e.Name.Accept(this)}";
+    }
 }
 
 public class StmtPrettyPrinter: StmtVisitor<string> {
