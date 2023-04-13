@@ -335,10 +335,25 @@ public class Interpreter {
 
     private record class LoxClass (String Name,
       Dictionary<string, LoxFunction> Methods): Callable {
-        public int Arity => 0;
+        public int Arity
+        {
+            get
+            {
+                LoxFunction? initMethod;
+                if (TryGetMethod("init", out initMethod))
+                    return initMethod.Arity;
+                return 0;
+            }
+        }
 
-        public object? Call(List<object?> arguments) =>
-          new LoxObject(this, new Dictionary<string, object?>());
+        public object? Call(List<object?> arguments)
+        {
+            var obj = new LoxObject(this, new Dictionary<string, object?>());
+            LoxFunction? initMethod;
+            if (TryGetMethod("init", out initMethod))
+                initMethod.Bind(obj).Call(arguments);
+            return obj;
+        }
 
         public bool TryGetMethod(string name,
           [NotNullWhen(returnValue: true)] out LoxFunction? method)
