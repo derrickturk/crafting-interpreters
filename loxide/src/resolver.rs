@@ -558,16 +558,19 @@ impl Resolver {
             Stmt::FunDef(name, params, body, (), loc) => {
                 let mut errs = ErrorBundle::new();
                 let v = match self.scope.declare(name.clone(), loc) {
-                    Ok(slot) => Some(slot),
+                    Ok(slot) => {
+                        match self.scope.define(name, loc) {
+                            Ok(_) =>
+                                Some(slot),
+                            Err(e) => {
+                                errs.push(e);
+                                None
+                            },
+                        }
+                    },
                     Err(e) => {
                         errs.push(e);
                         None
-                    },
-                };
-                match self.scope.define(name, loc) {
-                    Ok(_) => { },
-                    Err(e) => {
-                        errs.push(e);
                     },
                 };
                 self.enter_function();
