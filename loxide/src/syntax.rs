@@ -68,6 +68,10 @@ pub enum Expr<V> {
     Var(V, SrcLoc),
     Assign(V, Box<Expr<V>>, SrcLoc),
     Call(Box<Expr<V>>, Vec<Expr<V>>, SrcLoc),
+    This(V, SrcLoc),
+    PropertyGet(Box<Expr<V>>, String, SrcLoc),
+    PropertySet(Box<Expr<V>>, String, Box<Expr<V>>, SrcLoc),
+    Super(V, String, SrcLoc),
 }
 
 impl<V> Expr<V> {
@@ -79,6 +83,10 @@ impl<V> Expr<V> {
             Expr::Var(_, loc) => loc,
             Expr::Assign(_, _, loc) => loc,
             Expr::Call(_, _, loc) => loc,
+            Expr::This(_, loc) => loc,
+            Expr::PropertyGet(_, _, loc) => loc,
+            Expr::PropertySet(_, _, _, loc) => loc,
+            Expr::Super(_, _, loc) => loc,
         }
     }
 }
@@ -101,8 +109,22 @@ impl<V: fmt::Display> fmt::Display for Expr<V> {
                 }
                 write!(f, ")")
             },
+            Expr::This(_, _) => write!(f, "this"),
+            Expr::PropertyGet(o, name, _) => write!(f, "{}.{}", o, name),
+            Expr::PropertySet(o, name, e, _) =>
+              write!(f, "({}.{} = {})", o, name, e),
+            Expr::Super(_, name, _) => write!(f, "super.{}", name),
         }
     }
+}
+
+/// A function or method definition
+#[derive(Clone, Debug)]
+pub struct FunOrMethod<V, S> {
+    pub parameters: Vec<V>,
+    pub body: Vec<Stmt<V, S>>,
+    pub slots: S,
+    pub location: SrcLoc,
 }
 
 /// A Lox statement
@@ -115,7 +137,8 @@ pub enum Stmt<V, S> {
     Return(Option<Expr<V>>, SrcLoc),
     Block(Vec<Stmt<V, S>>, SrcLoc),
     VarDecl(V, Option<Expr<V>>, SrcLoc),
-    FunDef(V, Vec<V>, Vec<Stmt<V, S>>, S, SrcLoc),
+    FunDef(V, FunOrMethod<V, S>),
+    ClassDef(V, Option<V>, Vec<(String, FunOrMethod<V, S>)>, SrcLoc),
 }
 
 impl<V, S> Stmt<V, S> {
@@ -128,7 +151,8 @@ impl<V, S> Stmt<V, S> {
             Stmt::Return(_, loc) => loc,
             Stmt::Block(_, loc) => loc,
             Stmt::VarDecl(_, _, loc) => loc,
-            Stmt::FunDef(_, _, _, _, loc) => loc,
+            Stmt::FunDef(_, f) => &f.location,
+            Stmt::ClassDef(_, _, _, loc) => loc,
         }
     }
 }
@@ -163,16 +187,37 @@ impl<V: fmt::Display, S> fmt::Display for Stmt<V, S> {
                 }
                 write!(f, ";")
             },
-            Stmt::FunDef(v, params, body, _, _) => {
-                write!(f, "fun {} (", v)?;
+            Stmt::FunDef(name, def) => {
+                write!(f, "fun {} (", name)?;
                 let mut sep = "";
-                for p in params {
+                for p in &def.parameters {
                     write!(f, "{}{}", sep, p)?;
                     sep = ", ";
                 }
                 write!(f, ") {{\n")?;
-                for s in body {
+                for s in &def.body {
                     write!(f, "{}\n", s)?;
+                }
+                write!(f, "}}")
+            },
+            Stmt::ClassDef(name, sup, methods, _) => {
+                write!(f, "class {}", name)?;
+                if let Some(cls) = sup {
+                    write!(f, " < {}", cls)?;
+                }
+                write!(f, " {{\n")?;
+                for (name, m) in methods {
+                    write!(f, "{} (", name)?;
+                    let mut sep = "";
+                    for p in &m.parameters {
+                        write!(f, "{}{}", sep, p)?;
+                        sep = ", ";
+                    }
+                    write!(f, ") {{\n")?;
+                    for s in &m.body {
+                        write!(f, "{}\n", s)?;
+                    }
+                    write!(f, "}}\n")?;
                 }
                 write!(f, "}}")
             },

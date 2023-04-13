@@ -224,7 +224,12 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         require!(self, "'{'", TokenKind::LBrace);
         let body = self.block_rest()?;
 
-        Some(Stmt::FunDef(name, params, body, (), fun.loc))
+        Some(Stmt::FunDef(name, FunOrMethod {
+            parameters: params,
+            body,
+            slots: (),
+            location: fun.loc,
+        }))
     }
 
     fn if_else_rest(&mut self, t_if: Token) -> Option<Stmt<String, ()>> {

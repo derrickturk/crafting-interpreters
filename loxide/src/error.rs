@@ -42,12 +42,17 @@ pub enum ErrorDetails {
     AlreadyDefined(String),
     ArityMismatch(String, usize, usize),
     CircularDefinition(String),
-    NotLValue(String),
+    CircularSuperclass(String),
+    ExplicitInitializerReturn,
     InvalidReturn,
+    InvalidSuper,
+    InvalidThis,
+    NotLValue(String),
     ParseExpected(&'static str),
     Return(Value),
     TooManyArgs,
     TypeError(&'static str),
+    UndefinedProperty(String),
     UndefinedVariable(String),
     UnexpectedCharacter(char),
     UnterminatedStrLit,
@@ -64,10 +69,18 @@ impl Display for ErrorDetails {
                   name, expected, got),
             ErrorDetails::CircularDefinition(var) =>
                 write!(f, "local variable {} used in own definition", var),
-            ErrorDetails::NotLValue(what) =>
-                write!(f, "{} is not a valid assignment target", what),
+            ErrorDetails::CircularSuperclass(cls) =>
+                write!(f, "class {} used as own superclass", cls),
+            ErrorDetails::ExplicitInitializerReturn =>
+                write!(f, "explicit return value from init method"),
             ErrorDetails::InvalidReturn =>
                 write!(f, "return outside function or method"),
+            ErrorDetails::InvalidSuper =>
+                write!(f, "super outside subclass method"),
+            ErrorDetails::InvalidThis =>
+                write!(f, "this outside method"),
+            ErrorDetails::NotLValue(what) =>
+                write!(f, "{} is not a valid assignment target", what),
             ErrorDetails::ParseExpected(expected) =>
                 write!(f, "expected {}", expected),
             ErrorDetails::Return(v) =>
@@ -76,6 +89,8 @@ impl Display for ErrorDetails {
                 write!(f, "more than 255 arguments or parameters"),
             ErrorDetails::TypeError(msg) =>
                 write!(f, "type error: {}", msg),
+            ErrorDetails::UndefinedProperty(name) =>
+                write!(f, "undefined property {}", name),
             ErrorDetails::UndefinedVariable(var) =>
                 write!(f, "undefined variable {}", var),
             ErrorDetails::UnexpectedCharacter(c) =>

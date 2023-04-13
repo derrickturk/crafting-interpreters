@@ -158,21 +158,22 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
         Expr::Call(callee, args, loc) => {
             match eval(env, callee)? {
                 Value::Fun(def, closure) => {
-                    if args.len() != def.1.len() {
+                    if args.len() != def.1.parameters.len() {
                         return Err(Error {
                             loc: Some(*loc),
                             lexeme: None,
                             details: ErrorDetails::ArityMismatch(
-                              def.0.clone(), def.1.len(), args.len()),
+                              def.0.clone(), def.1.parameters.len(),
+                              args.len()),
                         });
                     }
 
-                    let frame = closure.child(def.3);
-                    for (p, a) in def.1.iter().zip(args.iter()) {
+                    let frame = closure.child(def.1.slots);
+                    for (p, a) in def.1.parameters.iter().zip(args.iter()) {
                         frame.set(p.frame, p.index, eval(env, a)?);
                     }
 
-                    match run(&frame, &def.2) {
+                    match run(&frame, &def.1.body) {
                         Err(Error { details: ErrorDetails::Return(val), .. }) =>
                             Ok(val),
                         Ok(()) =>
@@ -265,10 +266,9 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
             Ok(())
         },
 
-        Stmt::FunDef(v, params, body, slots, _) => {
-            let defn = Rc::new((
-              v.name.clone(), params.clone(), body.clone(), *slots));
-            let fun = Value::Fun(defn, env.clone());
+        Stmt::FunDef(v, def) => {
+            let fun = Value::Fun(
+              Rc::new((v.name.clone(), def.clone())), env.clone());
             env.set(v.frame, v.index, fun);
             Ok(())
         },

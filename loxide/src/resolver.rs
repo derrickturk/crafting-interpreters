@@ -9,14 +9,21 @@ use crate::{
     error::{Error, ErrorBundle, ErrorDetails},
     env::{Env, Slot},
     srcloc::SrcLoc,
-    syntax::{Expr, Stmt},
+    syntax::{Expr, FunOrMethod, Stmt},
     value::Value,
 };
 
 #[derive(Copy, Clone, Debug)]
 enum FunKind {
-    TopLevel,
     Function,
+    Method,
+    Initializer,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum ClassKind {
+    Class,
+    SubClass,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -91,7 +98,8 @@ impl FunctionScope {
 struct BlockScope {
     pub locals: HashMap<String, LocalVarRecord>,
     pub parent: Box<Scope>,
-    pub parent_kind: FunKind,
+    pub parent_fun_kind: Option<FunKind>,
+    pub parent_class_kind: Option<ClassKind>,
 }
 
 impl BlockScope {
@@ -108,7 +116,7 @@ impl BlockScope {
                     return Slot { name, frame: 0, index };
                 },
 
-                Scope::Function(f) => {
+                Scope::Function(f, _, _) => {
                     let index = f.slots;
                     f.slots += 1;
                     self.locals.insert(name.clone(),
@@ -127,7 +135,7 @@ impl BlockScope {
 #[derive(Clone, Debug)]
 enum Scope {
     Global(GlobalScope),
-    Function(FunctionScope),
+    Function(FunctionScope, FunKind, Option<ClassKind>),
     Block(BlockScope),
 }
 
@@ -142,21 +150,24 @@ impl Scope {
     }
 
     #[inline]
-    fn enter_function(self) -> Self {
+    fn enter_function(self, fun_kind: FunKind,
+      class_kind: Option<ClassKind>) -> Self {
         Self::Function(FunctionScope {
             slots: 0,
             locals: HashMap::new(),
             parent: Box::new(self),
-        })
+        }, fun_kind, class_kind)
     }
 
     #[inline]
     fn enter_block(self) -> Self {
-        let parent_kind = self.kind();
+        let parent_fun_kind = self.fun_kind();
+        let parent_class_kind = self.class_kind();
         Self::Block(BlockScope {
             locals: HashMap::new(),
             parent: Box::new(self),
-            parent_kind,
+            parent_fun_kind,
+            parent_class_kind,
         })
     }
 
@@ -164,17 +175,26 @@ impl Scope {
     fn exit(self) -> Self {
         match self {
             Self::Global(_) => self,
-            Self::Function(f) => *f.parent,
+            Self::Function(f, _, _) => *f.parent,
             Self::Block(b) => *b.parent,
         }
     }
 
     #[inline]
-    fn kind(&self) -> FunKind {
+    fn fun_kind(&self) -> Option<FunKind> {
         match self {
-            Self::Global(_) => FunKind::TopLevel,
-            Self::Function(_) => FunKind::Function,
-            Self::Block(b) => b.parent_kind,
+            Self::Global(_) => None,
+            Self::Function(_, k, _) => Some(*k),
+            Self::Block(b) => b.parent_fun_kind,
+        }
+    }
+
+    #[inline]
+    fn class_kind(&self) -> Option<ClassKind> {
+        match self {
+            Self::Global(_) => None,
+            Self::Function(_, _, k) => *k,
+            Self::Block(b) => b.parent_class_kind,
         }
     }
 
@@ -182,7 +202,7 @@ impl Scope {
     fn slots(&self) -> usize {
         match self {
             Self::Global(g) => g.slots,
-            Self::Function(f) => f.slots,
+            Self::Function(f, _, _) => f.slots,
             Self::Block(_) => 0,
         }
     }
@@ -198,7 +218,7 @@ impl Scope {
                 }
             },
 
-            Self::Function(f) => {
+            Self::Function(f, _, _) => {
                 if let Some(rec) = f.locals.get(&name) {
                     match rec.state {
                         LocalVarState::Defined => {
@@ -251,7 +271,7 @@ impl Scope {
                 }
             },
 
-            Self::Function(f) => {
+            Self::Function(f, _, _) => {
                 if f.locals.contains_key(&name) {
                     Err(Error {
                         loc: Some(loc),
@@ -299,7 +319,7 @@ impl Scope {
                 }
             },
 
-            Self::Function(f) => {
+            Self::Function(f, _, _) => {
                 if let Some(rec) = f.locals.get_mut(&name) {
                     match rec.state {
                         LocalVarState::Defined => {
@@ -430,6 +450,56 @@ impl Resolver {
                     Err(errs)
                 }
             },
+
+            Expr::This(_, loc) => {
+                if self.scope.class_kind().is_none() {
+                    Err(Error {
+                        loc: Some(loc),
+                        lexeme: Some("this".to_string()),
+                        details: ErrorDetails::InvalidThis,
+                    })?
+                } else {
+                    let v = self.scope.resolve("this".to_string(), loc)
+                      .expect("internal error: 'this' not bound");
+                    Ok(Expr::This(v, loc))
+                }
+            },
+
+            Expr::PropertyGet(e, name, loc) => {
+                Ok(Expr::PropertyGet(
+                  Box::new(self.resolve_expr(*e)?), name, loc))
+            },
+
+            Expr::PropertySet(lhs, name, rhs, loc) => {
+                match (self.resolve_expr(*lhs), self.resolve_expr(*rhs)) {
+                    (Ok(lhs), Ok(rhs)) =>
+                        Ok(Expr::PropertySet(
+                          Box::new(lhs), name, Box::new(rhs), loc)),
+                    (Err(es), Ok(_)) => Err(es),
+                    (Ok(_), Err(es)) => Err(es),
+                    (Err(mut les), Err(res)) => {
+                        les.append(res);
+                        Err(les)
+                    }
+                }
+            },
+
+            Expr::Super(_, name, loc) => {
+                match self.scope.class_kind() {
+                    Some(ClassKind::SubClass) => {
+                        let v = self.scope.resolve("super".to_string(), loc)
+                          .expect("internal error: 'super' not bound");
+                        Ok(Expr::Super(v, name, loc))
+                    },
+                    _ => {
+                        Err(Error {
+                            loc: Some(loc),
+                            lexeme: Some("super".to_string()),
+                            details: ErrorDetails::InvalidSuper,
+                        })?
+                    }
+                }
+            },
         }
     }
 
@@ -497,8 +567,22 @@ impl Resolver {
             },
 
             Stmt::Return(e, loc) => {
-                match self.scope.kind() {
-                    FunKind::Function => {
+                match self.scope.fun_kind() {
+                    Some(FunKind::Initializer) => {
+                        match e {
+                            Some(e) =>
+                                Err(Error {
+                                    loc: Some(*e.location()),
+                                    lexeme: None,
+                                    details:
+                                      ErrorDetails::ExplicitInitializerReturn,
+                                })?,
+                            None =>
+                                Ok(Stmt::Return(None, loc)),
+                        }
+                    },
+
+                    Some(_) => {
                         match e {
                             Some(e) =>
                                 Ok(Stmt::Return(Some(self.resolve_expr(e)?), loc)),
@@ -508,13 +592,11 @@ impl Resolver {
                     },
 
                     _ => {
-                        let mut es = ErrorBundle::new();
-                        es.push(Error {
+                        Err(Error {
                             loc: Some(loc),
                             lexeme: Some("return".to_string()),
                             details: ErrorDetails::InvalidReturn,
-                        });
-                        Err(es)
+                        })?
                     },
                 }
             },
@@ -548,11 +630,12 @@ impl Resolver {
                 Ok(Stmt::VarDecl(v, init, loc))
             },
 
-            Stmt::FunDef(name, params, body, (), loc) => {
+            Stmt::FunDef(name, def) => {
                 let mut errs = ErrorBundle::new();
-                let v = match self.scope.declare(name.clone(), loc) {
+                let v = match self.scope.declare(name.clone(),
+                  def.location) {
                     Ok(slot) => {
-                        match self.scope.define(name, loc) {
+                        match self.scope.define(name, def.location) {
                             Ok(_) =>
                                 Some(slot),
                             Err(e) => {
@@ -566,25 +649,107 @@ impl Resolver {
                         None
                     },
                 };
-                self.enter_function();
-                let mut r_params = Vec::new();
-                for p in params {
-                    match self.scope.define(p, loc) {
-                        Ok(p) => r_params.push(p),
-                        Err(e) => errs.push(e),
-                    };
-                }
-                let mut r_body = Vec::new();
-                for stmt in body {
-                    match self.resolve_stmt(stmt) {
-                        Ok(s) => r_body.push(s),
-                        Err(es) => errs.append(es),
-                    };
-                }
-                let slots = self.scope.slots();
-                self.exit_scope();
+
+                let def = match self.resolve_fun_or_method(
+                  FunKind::Function, None, def) {
+                    Ok(def) => Some(def),
+                    Err(es) => {
+                        errs.append(es);
+                        None
+                    },
+                };
+
                 if errs.is_empty() {
-                    Ok(Stmt::FunDef(v.unwrap(), r_params, r_body, slots, loc))
+                    Ok(Stmt::FunDef(v.unwrap(), def.unwrap()))
+                } else {
+                    Err(errs)
+                }
+            },
+
+            Stmt::ClassDef(name, sup, methods, loc) => {
+                let mut errs = ErrorBundle::new();
+                let v = match self.scope.declare(name.clone(), loc) {
+                    Ok(slot) => {
+                        match self.scope.define(name.clone(), loc) {
+                            Ok(_) =>
+                                Some(slot),
+                            Err(e) => {
+                                errs.push(e);
+                                None
+                            },
+                        }
+                    },
+                    Err(e) => {
+                        errs.push(e);
+                        None
+                    },
+                };
+
+                let class_kind = if sup.is_some() {
+                    ClassKind::SubClass
+                } else {
+                    ClassKind::Class
+                };
+
+                let super_slot = if let Some(sup) = sup {
+                    self.enter_block();
+
+                    if sup == name {
+                        errs.push(Error {
+                            loc: Some(loc),
+                            lexeme: Some(sup.clone()),
+                            details: ErrorDetails::CircularSuperclass(
+                              sup.clone()),
+                        });
+                    }
+
+                    match self.scope.resolve(sup, loc) {
+                        Ok(slot) => {
+                            match self.scope.define("super".to_string(), loc) {
+                                Ok(_) => Some(slot),
+                                Err(e) => {
+                                    errs.push(e);
+                                    None
+                                },
+                            }
+                        },
+
+                        Err(e) => {
+                            errs.push(e);
+                            None
+                        },
+                    }
+                } else {
+                    None
+                };
+
+                let mut r_methods = Vec::new();
+                for (name, def) in methods {
+                    let fun_kind = if name == "init" {
+                        FunKind::Initializer
+                    } else {
+                        FunKind::Method
+                    };
+
+                    match self.resolve_fun_or_method(fun_kind,
+                      Some(class_kind), def) {
+                        Ok(def) => {
+                            r_methods.push((name, def));
+                        },
+
+                        Err(es) => {
+                            errs.append(es);
+                        },
+                    };
+                }
+
+                match class_kind {
+                    ClassKind::SubClass => self.exit_scope(),
+                    _ => { },
+                };
+
+                if errs.is_empty() {
+                    Ok(Stmt::ClassDef(v.unwrap(), super_slot, r_methods, loc))
                 } else {
                     Err(errs)
                 }
@@ -623,6 +788,44 @@ impl Resolver {
         env.ensure_slots(self.scope.slots())
     }
 
+    fn resolve_fun_or_method(&mut self, fun_kind: FunKind,
+      class_kind: Option<ClassKind>, def: FunOrMethod<String, ()>
+      ) -> Result<FunOrMethod<Slot, usize>, ErrorBundle> {
+        let mut errs = ErrorBundle::new();
+        self.enter_function(fun_kind, class_kind);
+
+        if class_kind.is_some() {
+            self.scope.define("this".to_string(), def.location)
+              .expect("internal error: unable to define 'this'");
+        }
+
+        let mut parameters = Vec::new();
+        for p in def.parameters {
+            match self.scope.define(p, def.location) {
+                Ok(p) => parameters.push(p),
+                Err(e) => errs.push(e),
+            };
+        }
+
+        let mut body = Vec::new();
+        for stmt in def.body {
+            match self.resolve_stmt(stmt) {
+                Ok(s) => body.push(s),
+                Err(es) => errs.append(es),
+            };
+        }
+
+        let slots = self.scope.slots();
+
+        self.exit_scope();
+
+        if errs.is_empty() {
+            Ok(FunOrMethod { parameters, body, slots, location: def.location })
+        } else {
+            Err(errs)
+        }
+    }
+
     /* these suck and I hate them. technically they could blow up if enter_*
      *   panics due to OOM but at that point the world is on fire
      *   so <shrug emoji>
@@ -635,9 +838,10 @@ impl Resolver {
         unsafe { ptr::write(&mut self.scope, child) };
     }
 
-    fn enter_function(&mut self) {
+    fn enter_function(&mut self, fun_kind: FunKind,
+      class_kind: Option<ClassKind>) {
         let parent = unsafe { ptr::read(&self.scope) };
-        let child = parent.enter_function();
+        let child = parent.enter_function(fun_kind, class_kind);
         unsafe { ptr::write(&mut self.scope, child) };
     }
 
