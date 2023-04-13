@@ -33,7 +33,8 @@ public class Parser {
             return VarDeclRest(tok.Value);
         if ((tok = Match(TokenType.Fun)) != null)
             return FunDefOrMethodRest(tok.Value);
-
+        if ((tok = Match(TokenType.Class)) != null)
+            return ClassDefRest(tok.Value);
         return Statement();
     }
 
@@ -49,15 +50,25 @@ public class Parser {
           new Var(name.Lexeme, name.Location), initializer, var_.Location);
     }
 
-    private Stmt FunDefOrMethodRest(Token tok)
+    private FunDef FunDefOrMethodRest(Token tok)
     {
-        var kind = tok.Type switch {
-            TokenType.Fun => "function",
-            _ => throw new InvalidOperationException(
-              "internal error: bad token type for fun/method rest"),
-        };
+        string kind;
+        Var name;
+        switch (tok.Type) {
+            case TokenType.Fun:
+                kind = "function";
+                var ident = Require("expected function name", TokenType.Ident);
+                name = new Var(ident.Lexeme, ident.Location);
+                break;
+            case TokenType.Ident:
+                kind = "method";
+                name = new Var(tok.Lexeme, tok.Location);
+                break;
+            default:
+                throw new InvalidOperationException(
+                  "internal error: bad token type for fun/method rest");
+        }
 
-        Token name = Require($"expected {kind} name", TokenType.Ident);
         Require($"expected '(' after {kind} name", TokenType.LParen);
 
         List<Var> parameters = new List<Var>();
@@ -77,8 +88,21 @@ public class Parser {
           TokenType.LBrace);
         var body = BlockRest(lbrace);
 
-        return new FunDef(new Var(name.Lexeme, name.Location),
-          parameters, body.Statements, tok.Location);
+        return new FunDef(name, parameters, body.Statements, tok.Location);
+    }
+
+    private ClassDef ClassDefRest(Token tok)
+    {
+        Token name = Require("expected class name", TokenType.Ident);
+        Require("expected '{'", TokenType.LBrace);
+        List<FunDef> methods = new List<FunDef>();
+        while (!Check(TokenType.RBrace) && !AtEOF) {
+            var method_name = Require("expected method name", TokenType.Ident);
+            methods.Add(FunDefOrMethodRest(method_name));
+        }
+        Require("expected '}'", TokenType.RBrace);
+        return new ClassDef(new Var(name.Lexeme, name.Location),
+          methods, tok.Location);
     }
 
     private Stmt Statement()
