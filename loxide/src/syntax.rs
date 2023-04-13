@@ -113,7 +113,7 @@ pub enum Stmt<V, S> {
     While(Expr<V>, Box<Stmt<V, S>>, SrcLoc),
     Print(Expr<V>, SrcLoc),
     Return(Option<Expr<V>>, SrcLoc),
-    Block(Vec<Stmt<V, S>>, S, SrcLoc),
+    Block(Vec<Stmt<V, S>>, SrcLoc),
     VarDecl(V, Option<Expr<V>>, SrcLoc),
     FunDef(V, Vec<V>, Vec<Stmt<V, S>>, S, SrcLoc),
 }
@@ -126,7 +126,7 @@ impl<V, S> Stmt<V, S> {
             Stmt::While(_, _, loc) => loc,
             Stmt::Print(_, loc) => loc,
             Stmt::Return(_, loc) => loc,
-            Stmt::Block(_, _, loc) => loc,
+            Stmt::Block(_, loc) => loc,
             Stmt::VarDecl(_, _, loc) => loc,
             Stmt::FunDef(_, _, _, _, loc) => loc,
         }
@@ -149,7 +149,7 @@ impl<V: fmt::Display, S> fmt::Display for Stmt<V, S> {
             Stmt::Print(e, _) => write!(f, "print {};", e),
             Stmt::Return(Some(e), _) => write!(f, "return {};", e),
             Stmt::Return(None, _) => write!(f, "return;"),
-            Stmt::Block(body, _, _) => {
+            Stmt::Block(body, _) => {
                 write!(f, "{{\n")?;
                 for s in body {
                     write!(f, "{}\n", s)?;

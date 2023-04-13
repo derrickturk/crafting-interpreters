@@ -248,7 +248,7 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
             })
         },
 
-        Stmt::Block(body, _, _) => {
+        Stmt::Block(body, _) => {
             for s in body {
                 exec(env, s)?;
             }

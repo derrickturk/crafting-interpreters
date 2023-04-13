@@ -49,14 +49,7 @@ struct GlobalVarRecord {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct FunctionVarRecord {
-    index: usize,
-    state: LocalVarState,
-}
-
-// TODO
-#[derive(Copy, Clone, Debug)]
-struct BlockVarRecord {
+struct LocalVarRecord {
     index: usize,
     state: LocalVarState,
 }
@@ -80,7 +73,7 @@ impl GlobalScope {
 #[derive(Clone, Debug)]
 struct FunctionScope {
     pub slots: usize,
-    pub locals: HashMap<String, FunctionVarRecord>,
+    pub locals: HashMap<String, LocalVarRecord>,
     pub parent: Box<Scope>,
 }
 
@@ -89,14 +82,14 @@ impl FunctionScope {
     fn make_slot(&mut self, name: String, state: LocalVarState) -> Slot {
         let index = self.slots;
         self.slots += 1;
-        self.locals.insert(name.clone(), FunctionVarRecord { index, state });
+        self.locals.insert(name.clone(), LocalVarRecord { index, state });
         Slot { name, frame: 0, index }
     }
 }
 
 #[derive(Clone, Debug)]
 struct BlockScope {
-    pub locals: HashMap<String, BlockVarRecord>,
+    pub locals: HashMap<String, LocalVarRecord>,
     pub parent: Box<Scope>,
     pub parent_kind: FunKind,
 }
@@ -111,7 +104,7 @@ impl BlockScope {
                     let index = g.slots;
                     g.slots += 1;
                     self.locals.insert(name.clone(),
-                      BlockVarRecord { index, state });
+                      LocalVarRecord { index, state });
                     return Slot { name, frame: 0, index };
                 },
 
@@ -119,7 +112,7 @@ impl BlockScope {
                     let index = f.slots;
                     f.slots += 1;
                     self.locals.insert(name.clone(),
-                      BlockVarRecord { index, state });
+                      LocalVarRecord { index, state });
                     return Slot { name, frame: 0, index };
                 },
 
@@ -526,7 +519,7 @@ impl Resolver {
                 }
             },
 
-            Stmt::Block(body, (), loc) => {
+            Stmt::Block(body, loc) => {
                 self.enter_block();
                 let mut r_body = Vec::new();
                 let mut errs = ErrorBundle::new();
@@ -539,7 +532,7 @@ impl Resolver {
                 self.exit_scope();
                 if errs.is_empty() {
                     // TODO: block shouldn't carry slots
-                    Ok(Stmt::Block(r_body, 0, loc))
+                    Ok(Stmt::Block(r_body, loc))
                 } else {
                     Err(errs)
                 }

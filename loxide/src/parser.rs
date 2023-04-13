@@ -176,7 +176,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
 
         if let Some(tok) = match_token!(self, TokenKind::LBrace) {
             let body = self.block_rest()?;
-            return Some(Stmt::Block(body, (), tok.loc));
+            return Some(Stmt::Block(body, tok.loc));
         }
 
         self.expression_statement()
@@ -279,7 +279,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         let body = if let Some(incr) = incr {
             let b_loc = *body.location();
             let i_loc = *incr.location();
-            Stmt::Block(vec![body, Stmt::Expr(incr, i_loc)], (), b_loc)
+            Stmt::Block(vec![body, Stmt::Expr(incr, i_loc)], b_loc)
         } else {
             body
         };
@@ -287,7 +287,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         let body = match init {
             Some(init) => {
                 let loc = *init.location();
-                Stmt::Block(vec![init, body], (), loc)
+                Stmt::Block(vec![init, body], loc)
             },
             None => body,
         };
