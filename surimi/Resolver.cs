@@ -70,11 +70,19 @@ internal class Resolver: Traverser {
 
     public override ValueTuple VisitFunDef(FunDef s) 
     {
+        Declare(s.Name);
         Define(s.Name.Name);
         var currentKind = _functionKind;
         _functionKind = FunctionKind.Function;
         ResolveFunDefOrMethod(s);
         _functionKind = currentKind;
+        return ValueTuple.Create();
+    }
+
+    public override ValueTuple VisitClassDef(ClassDef s)
+    {
+        Declare(s.Name);
+        Define(s.Name.Name);
         return ValueTuple.Create();
     }
 

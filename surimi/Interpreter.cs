@@ -41,21 +41,7 @@ public class Interpreter {
         null => "nil",
         true => "true",
         false => "false",
-        double d => d.ToString(),
-        string s => s,
-        LoxFunction f => $"<function {f.Definition.Name.Name}>",
-        Builtin b => $"<built-in function {b.Name}>",
-        _ => throw new InvalidOperationException("invalid runtime value"),
-    };
-
-    internal static string ValueLiteral(object? val) => val switch
-    {
-        null => "nil",
-        true => "true",
-        false => "false",
-        double d => d.ToString(),
-        string s => $"\"{s}\"",
-        _ => throw new InvalidOperationException("invalid runtime value"),
+        _ => val.ToString()!,
     };
 
     private void RegisterBuiltins()
@@ -270,7 +256,9 @@ public class Interpreter {
 
         public ValueTuple VisitClassDef(ClassDef s)
         {
-            _env.Declare(s.Name, "TODO: one day I'll be a class");
+            _env.Declare(s.Name, null);
+            // TODO: why this shady two-step
+            _env[s.Name] = new LoxClass(s.Name.Name);
             return ValueTuple.Create();
         }
 
@@ -278,7 +266,7 @@ public class Interpreter {
         private Dictionary<Var, int> _scopesOut;
     }
 
-    private record class LoxFunction(FunDef Definition, Environment Env,
+    private record class LoxFunction (FunDef Definition, Environment Env,
       Dictionary<Var, int> VariableScopesOut): Callable {
         public int Arity => Definition.Parameters.Count;
 
@@ -298,6 +286,18 @@ public class Interpreter {
         }
 
         public override string ToString() => $"<function {Definition.Name.Name}>";
+    }
+
+    private record class LoxClass (String Name): Callable {
+        public int Arity => 0;
+
+        public object? Call(List<object?> arguments) => new LoxObject(this);
+
+        public override string ToString() => $"<class {Name}>";
+    }
+
+    private record class LoxObject (LoxClass Class) {
+        public override string ToString() => $"<{Class.Name} object>";
     }
 
     private ErrorReporter _onError;
