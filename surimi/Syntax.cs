@@ -132,3 +132,11 @@ public record class FunDef (Var Name, List<Var> Parameters, List<Stmt> Body,
         return visitor.VisitFunDef(this);
     }
 }
+
+public record class ClassDef (Var Name, List<FunDef> Methods, SrcLoc Location)
+  : Stmt (Location) {
+    public override T Accept<T>(StmtVisitor<T> visitor)
+    {
+        return visitor.VisitClassDef(this);
+    }
+}

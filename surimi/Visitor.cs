@@ -18,6 +18,7 @@ public interface StmtVisitor<T> {
     public T VisitBlock(Block s);
     public T VisitVarDecl(VarDecl s);
     public T VisitFunDef(FunDef s);
+    public T VisitClassDef(ClassDef s);
 }
 
 // a "template" traversal which just visits things and does nothing
@@ -107,6 +108,14 @@ public class Traverser: ExprVisitor<ValueTuple>, StmtVisitor<ValueTuple> {
             p.Accept(this);
         foreach (var stmt in s.Body)
             stmt.Accept(this);
+        return ValueTuple.Create();
+    }
+
+    public virtual ValueTuple VisitClassDef(ClassDef s)
+    {
+        s.Name.Accept(this);
+        foreach (var meth in s.Methods)
+            meth.Accept(this);
         return ValueTuple.Create();
     }
 }

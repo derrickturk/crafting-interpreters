@@ -268,6 +268,12 @@ public class Interpreter {
             return ValueTuple.Create();
         }
 
+        public ValueTuple VisitClassDef(ClassDef s)
+        {
+            _env.Declare(s.Name, "TODO: one day I'll be a class");
+            return ValueTuple.Create();
+        }
+
         private Environment _env;
         private Dictionary<Var, int> _scopesOut;
     }

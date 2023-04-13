@@ -125,10 +125,13 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
         return $"{Indent}var {s.Variable.Name}{initializer};";
     }
 
-    public string VisitFunDef(FunDef s)
+    public string VisitFunDef(FunDef s) => VisitFunDef(s, true);
+
+    public string VisitFunDef(FunDef s, bool freeFunction)
     {
         StringBuilder sb = new StringBuilder();
-        sb.Append($"{Indent}fun {s.Name.Name} (");
+        string prefix = freeFunction ? "fun " : "";
+        sb.Append($"{Indent}{prefix}{s.Name.Name} (");
         string sep = "";
         foreach (var p in s.Parameters) {
             sb.Append($"{sep}{p.Name}");
@@ -138,6 +141,20 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
         _indent += 2;
         foreach (var stmt in s.Body)
             sb.Append($"{stmt.Accept(this)}\n");
+        _indent -= 2;
+        sb.Append("}");
+        return sb.ToString();
+    }
+
+    public string VisitClassDef(ClassDef s)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.Append($"class {s.Name} {{\n");
+        _indent += 2;
+        foreach (var meth in s.Methods) {
+            sb.Append(VisitFunDef(meth, false));
+            sb.Append("\n");
+        }
         _indent -= 2;
         sb.Append("}");
         return sb.ToString();
