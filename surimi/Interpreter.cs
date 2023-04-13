@@ -1,6 +1,7 @@
 namespace Surimi;
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 public class Interpreter {
     public Interpreter(ErrorReporter onError)
@@ -203,10 +204,11 @@ public class Interpreter {
         public object? VisitPropertyGet(PropertyGet e)
         {
             if (e.Object.Accept(this) is LoxObject o) {
-                if (!o.Properties.ContainsKey(e.Name.Name))
+                object? result;
+                if (!o.TryGetProperty(e.Name.Name, out result))
                     throw new RuntimeError(
                       e.Name.Location, "undefined property");
-                return o.Properties[e.Name.Name];
+                return result;
             } else {
                 throw new RuntimeError(
                   e.Object.Location, "property access on non-object");
@@ -282,8 +284,11 @@ public class Interpreter {
         public ValueTuple VisitClassDef(ClassDef s)
         {
             _env.Declare(s.Name, null);
-            // TODO: why this shady two-step
-            _env[s.Name] = new LoxClass(s.Name.Name);
+            var methods = new Dictionary<string, LoxFunction>();
+            foreach (var method in s.Methods)
+                methods[method.Name.Name] = new LoxFunction(method,
+                  _env, _scopesOut);
+            _env[s.Name] = new LoxClass(s.Name.Name, methods);
             return ValueTuple.Create();
         }
 
@@ -313,17 +318,37 @@ public class Interpreter {
         public override string ToString() => $"<function {Definition.Name.Name}>";
     }
 
-    private record class LoxClass (String Name): Callable {
+    private record class LoxClass (String Name,
+      Dictionary<string, LoxFunction> Methods): Callable {
         public int Arity => 0;
 
         public object? Call(List<object?> arguments) =>
           new LoxObject(this, new Dictionary<string, object?>());
+
+        public bool TryGetMethod(string name,
+          [NotNullWhen(returnValue: true)] out LoxFunction? method)
+        {
+            return Methods.TryGetValue(name, out method);
+        }
 
         public override string ToString() => $"<class {Name}>";
     }
 
     private record class LoxObject (LoxClass Class,
       Dictionary<string, object?> Properties) {
+
+        public bool TryGetProperty(string name, out object? property)
+        {
+            if (Properties.TryGetValue(name, out property))
+                return true;
+            LoxFunction? method;
+            if (Class.TryGetMethod(name, out method)) {
+                property = method;
+                return true;
+            }
+            return false;
+        }
+
         public override string ToString() => $"<{Class.Name} object>";
     }
 

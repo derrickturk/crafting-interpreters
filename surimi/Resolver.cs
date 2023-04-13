@@ -9,6 +9,7 @@ internal enum VariableState {
 internal enum FunctionKind {
     None,
     Function,
+    Method,
 }
 
 internal class Resolver: Traverser {
@@ -83,6 +84,11 @@ internal class Resolver: Traverser {
     {
         Declare(s.Name);
         Define(s.Name.Name);
+        var currentKind = _functionKind;
+        _functionKind = FunctionKind.Method;
+        foreach (var method in s.Methods)
+            ResolveFunDefOrMethod(method);
+        _functionKind = currentKind;
         return ValueTuple.Create();
     }
 
