@@ -325,7 +325,12 @@ public class Interpreter {
         public LoxFunction Bind(LoxObject o) =>
           new LoxFunction(Definition, Env, VariableScopesOut, o);
 
-        public override string ToString() => $"<function {Definition.Name.Name}>";
+        public override string ToString()
+        {
+            if (This != null)
+                return $"<bound method {This}.{Definition.Name.Name}>";
+            return $"<function {Definition.Name.Name}>";
+        }
     }
 
     private record class LoxClass (String Name,
