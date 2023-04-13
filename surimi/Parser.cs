@@ -360,6 +360,9 @@ public class Parser {
         if ((tok = Match(TokenType.StrLit, TokenType.NumLit)) != null)
             return new Literal(tok.Value.Literal, tok.Value.Location);
 
+        if ((tok = Match(TokenType.This)) != null)
+            return new This(tok.Value.Location);
+
         if ((tok = Match(TokenType.Ident)) != null)
             return new Var(tok.Value.Lexeme, tok.Value.Location);
 

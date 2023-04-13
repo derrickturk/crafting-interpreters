@@ -12,14 +12,20 @@ internal enum FunctionKind {
     Method,
 }
 
+internal enum ClassKind {
+    None,
+    Class,
+}
+
 internal class Resolver: Traverser {
     public Resolver(IEnumerable<string> globalBindings, ErrorReporter onError)
     {
         _onError = onError;
         _stateStack = new Stack<Dictionary<string, VariableState>>();
         _stateStack.Push(new Dictionary<string, VariableState>());
-        _scopesOut = new Dictionary<Var, int>();
+        _scopesOut = new Dictionary<Expr, int>();
         _functionKind = FunctionKind.None;
+        _classKind = ClassKind.None;
         foreach (var name in globalBindings)
             Define(name);
     }
@@ -31,14 +37,15 @@ internal class Resolver: Traverser {
             _onError.Error(v.Location,
               $"cannot use variable {v.Name} in its own initializer");
         }
-        ResolveVar(v);
+        ResolveVarOrThis(v, v.Name);
         return ValueTuple.Create();
     }
 
-    public override ValueTuple VisitAssign(Assign e)
+    public override ValueTuple VisitThis(This e)
     {
-        e.Value.Accept(this);
-        e.Value.Accept(this);
+        if (_classKind == ClassKind.None)
+            _onError.Error(e.Location, "this outside class definition");
+        ResolveVarOrThis(e, "this");
         return ValueTuple.Create();
     }
 
@@ -84,15 +91,18 @@ internal class Resolver: Traverser {
     {
         Declare(s.Name);
         Define(s.Name.Name);
-        var currentKind = _functionKind;
+        var currentFunctionKind = _functionKind;
+        var currentClassKind = _classKind;
         _functionKind = FunctionKind.Method;
+        _classKind = ClassKind.Class;
         foreach (var method in s.Methods)
             ResolveFunDefOrMethod(method);
-        _functionKind = currentKind;
+        _functionKind = currentFunctionKind;
+        _classKind = currentClassKind;
         return ValueTuple.Create();
     }
 
-    public static Dictionary<Var, int>? Resolve(List<Stmt> program,
+    public static Dictionary<Expr, int>? Resolve(List<Stmt> program,
       IEnumerable<string> globalBindings, ErrorReporter onError)
     {
         var r = new Resolver(globalBindings, onError);
@@ -106,6 +116,10 @@ internal class Resolver: Traverser {
     private void ResolveFunDefOrMethod(FunDef s)
     {
         PushScope();
+        /* ok, I'm deviating from the book here: we'll make 'this' the first
+         * slot in the function environment */
+        if (_functionKind == FunctionKind.Method)
+            Define("this");
         foreach (var p in s.Parameters)
             Define(p.Name);
         foreach (var stmt in s.Body)
@@ -117,7 +131,8 @@ internal class Resolver: Traverser {
 
     private Dictionary<string, VariableState> ScopeStates => _stateStack.Peek();
 
-    private Dictionary<Var, int> VariableScopesOut => _scopesOut;
+    // so gross: this has to be Expr, because it has to work for This and Var
+    private Dictionary<Expr, int> VariableScopesOut => _scopesOut;
 
     // this one has to take Var, because it needs a Location to error at...
     private void Declare(Var v)
@@ -137,12 +152,12 @@ internal class Resolver: Traverser {
         ScopeStates[v] = VariableState.Defined;
     }
 
-    private void ResolveVar(Var v)
+    private void ResolveVarOrThis(Expr e, string name)
     {
         int i = 0;
         foreach (var frame in _stateStack) {
-            if (frame.ContainsKey(v.Name)) {
-                _scopesOut[v] = i;
+            if (frame.ContainsKey(name)) {
+                _scopesOut[e] = i;
                 return;
             }
             ++i;
@@ -162,11 +177,10 @@ internal class Resolver: Traverser {
                  *   so this is my hack to operate on the "bottom" of the stack;
                  *   i.e. the global frame
                  */
-                _scopesOut[v] = i - 1;
-                frame[v.Name] = VariableState.Deferred;
+                _scopesOut[e] = i - 1;
+                frame[name] = VariableState.Deferred;
             }
         }
-
     }
 
     private void PushScope()
@@ -184,6 +198,7 @@ internal class Resolver: Traverser {
 
     private ErrorReporter _onError;
     private Stack<Dictionary<string, VariableState>> _stateStack;
-    private Dictionary<Var, int> _scopesOut;
+    private Dictionary<Expr, int> _scopesOut;
     private FunctionKind _functionKind;
+    private ClassKind _classKind;
 }

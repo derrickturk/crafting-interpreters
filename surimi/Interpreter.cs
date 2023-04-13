@@ -55,7 +55,7 @@ public class Interpreter {
     private class EvalExecVisitor
       : ExprVisitor<object?>, StmtVisitor<ValueTuple> {
         public EvalExecVisitor(Environment env,
-          Dictionary<Var, int> variableScopesOut)
+          Dictionary<Expr, int> variableScopesOut)
         {
             _env = env;
             _scopesOut = variableScopesOut;
@@ -180,6 +180,11 @@ public class Interpreter {
             return _env[e, _scopesOut[e]];
         }
 
+        public object? VisitThis(This e)
+        {
+            return _env[new Var("this", e.Location), _scopesOut[e]];
+        }
+
         public object? VisitAssign(Assign e)
         {
             var val = e.Value.Accept(this);
@@ -277,7 +282,7 @@ public class Interpreter {
 
         public ValueTuple VisitFunDef(FunDef s)
         {
-            _env.Declare(s.Name, new LoxFunction(s, _env, _scopesOut));
+            _env.Declare(s.Name, new LoxFunction(s, _env, _scopesOut, null));
             return ValueTuple.Create();
         }
 
@@ -287,22 +292,24 @@ public class Interpreter {
             var methods = new Dictionary<string, LoxFunction>();
             foreach (var method in s.Methods)
                 methods[method.Name.Name] = new LoxFunction(method,
-                  _env, _scopesOut);
+                  _env, _scopesOut, null);
             _env[s.Name] = new LoxClass(s.Name.Name, methods);
             return ValueTuple.Create();
         }
 
         private Environment _env;
-        private Dictionary<Var, int> _scopesOut;
+        private Dictionary<Expr, int> _scopesOut;
     }
 
     private record class LoxFunction (FunDef Definition, Environment Env,
-      Dictionary<Var, int> VariableScopesOut): Callable {
+      Dictionary<Expr, int> VariableScopesOut, LoxObject? This): Callable {
         public int Arity => Definition.Parameters.Count;
 
         public object? Call(List<object?> arguments)
         {
             var frameEnv = new Environment(Env);
+            if (This != null)
+                frameEnv.Declare(new Var("this", Definition.Location), This);
             foreach (var (param, arg) in Definition.Parameters.Zip(arguments))
                 frameEnv.Declare(param, arg);
             var frameVisitor = new EvalExecVisitor(frameEnv, VariableScopesOut);
@@ -314,6 +321,9 @@ public class Interpreter {
             }
             return null;
         }
+
+        public LoxFunction Bind(LoxObject o) =>
+          new LoxFunction(Definition, Env, VariableScopesOut, o);
 
         public override string ToString() => $"<function {Definition.Name.Name}>";
     }
@@ -343,7 +353,7 @@ public class Interpreter {
                 return true;
             LoxFunction? method;
             if (Class.TryGetMethod(name, out method)) {
-                property = method;
+                property = method.Bind(this);
                 return true;
             }
             return false;

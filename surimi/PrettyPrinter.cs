@@ -70,6 +70,11 @@ public class ExprPrettyPrinter: ExprVisitor<string> {
     {
         return $"{e.Object.Accept(this)}.{e.Name.Accept(this)} = {e.Value.Accept(this)}";
     }
+
+    public string VisitThis(This e)
+    {
+        return "this";
+    }
 }
 
 public class StmtPrettyPrinter: StmtVisitor<string> {

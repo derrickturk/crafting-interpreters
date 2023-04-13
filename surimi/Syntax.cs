@@ -80,6 +80,13 @@ public record class PropertySet (Expr Object, Var Name, Expr Value,
     }
 }
 
+public record class This (SrcLoc Location): Expr (Location) {
+    public override T Accept<T>(ExprVisitor<T> visitor)
+    {
+        return visitor.VisitThis(this);
+    }
+}
+
 public abstract record class Stmt (SrcLoc Location) {
     public abstract T Accept<T>(StmtVisitor<T> visitor);
     public string PrettyPrint() => Accept(new StmtPrettyPrinter());
