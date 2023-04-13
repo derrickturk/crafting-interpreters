@@ -155,8 +155,8 @@ public record class FunDef (Var Name, List<Var> Parameters, List<Stmt> Body,
     }
 }
 
-public record class ClassDef (Var Name, List<FunDef> Methods, SrcLoc Location)
-  : Stmt (Location) {
+public record class ClassDef (Var Name, Var? Super, List<FunDef> Methods,
+  SrcLoc Location): Stmt (Location) {
     public override T Accept<T>(StmtVisitor<T> visitor)
     {
         return visitor.VisitClassDef(this);

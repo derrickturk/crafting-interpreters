@@ -97,6 +97,15 @@ internal class Resolver: Traverser {
     {
         Declare(s.Name);
         Define(s.Name.Name);
+
+        if (s.Super != null) {
+            // TODO: proper cycle detection, but those damn deferred globals...
+            if (s.Super.Name == s.Name.Name)
+                _onError.Error(s.Super.Location,
+                  $"cannot use class {s.Name.Name} as its own superclass");
+            ResolveVarOrThis(s.Super, s.Super.Name);
+        }
+
         var currentClassKind = _classKind;
         _classKind = ClassKind.Class;
         var currentFunctionKind = _functionKind;
@@ -109,6 +118,7 @@ internal class Resolver: Traverser {
         }
         _functionKind = currentFunctionKind;
         _classKind = currentClassKind;
+
         return ValueTuple.Create();
     }
 

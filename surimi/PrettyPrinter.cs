@@ -164,7 +164,8 @@ public class StmtPrettyPrinter: StmtVisitor<string> {
     public string VisitClassDef(ClassDef s)
     {
         StringBuilder sb = new StringBuilder();
-        sb.Append($"class {s.Name} {{\n");
+        var super = s.Super == null ? "" : $" < {s.Super.Name}";
+        sb.Append($"class {s.Name}{super} {{\n");
         _indent += 2;
         foreach (var meth in s.Methods) {
             sb.Append(VisitFunDef(meth, false));

@@ -288,12 +288,22 @@ public class Interpreter {
 
         public ValueTuple VisitClassDef(ClassDef s)
         {
+            LoxClass? superClass = null;
+            if (s.Super != null) {
+                if (s.Super.Accept(this) is LoxClass c)
+                    superClass = c;
+                else
+                    throw new RuntimeError(s.Super.Location,
+                      "superclass is not a class");
+            }
+
             _env.Declare(s.Name, null);
             var methods = new Dictionary<string, LoxFunction>();
             foreach (var method in s.Methods)
                 methods[method.Name.Name] = new LoxFunction(method,
                   _env, _scopesOut, null);
-            _env[s.Name] = new LoxClass(s.Name.Name, methods);
+            _env[s.Name] = new LoxClass(s.Name.Name, superClass, methods);
+
             return ValueTuple.Create();
         }
 
@@ -345,7 +355,7 @@ public class Interpreter {
         }
     }
 
-    private record class LoxClass (String Name,
+    private record class LoxClass (String Name, LoxClass? Super,
       Dictionary<string, LoxFunction> Methods): Callable {
         public int Arity
         {
@@ -370,7 +380,11 @@ public class Interpreter {
         public bool TryGetMethod(string name,
           [NotNullWhen(returnValue: true)] out LoxFunction? method)
         {
-            return Methods.TryGetValue(name, out method);
+            if (Methods.TryGetValue(name, out method))
+                return true;
+            if (Super != null)
+                return Super.TryGetMethod(name, out method);
+            return false;
         }
 
         public override string ToString() => $"<class {Name}>";

@@ -94,6 +94,11 @@ public class Parser {
     private ClassDef ClassDefRest(Token tok)
     {
         Token name = Require("expected class name", TokenType.Ident);
+        Var? super = null;
+        if (Match(TokenType.Lt) != null) {
+            Token superName = Require("superclass name", TokenType.Ident);
+            super = new Var(superName.Lexeme, superName.Location);
+        }
         Require("expected '{'", TokenType.LBrace);
         List<FunDef> methods = new List<FunDef>();
         while (!Check(TokenType.RBrace) && !AtEOF) {
@@ -102,7 +107,7 @@ public class Parser {
         }
         Require("expected '}'", TokenType.RBrace);
         return new ClassDef(new Var(name.Lexeme, name.Location),
-          methods, tok.Location);
+          super, methods, tok.Location);
     }
 
     private Stmt Statement()
