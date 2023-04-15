@@ -399,7 +399,7 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
                 Some((src, dst)) => Some({
                     let val = match env.get(src.frame, src.index) {
                         Some(val) => Ok(val.clone()),
-                        None => Err(undef_var_error!(*loc, v.name.clone())),
+                        None => Err(undef_var_error!(*loc, src.name.clone())),
                     }?;
                     match val {
                         Value::Class(c) => {
