@@ -96,6 +96,7 @@ impl FunctionScope {
 
 #[derive(Clone, Debug)]
 struct BlockScope {
+    pub slots: usize,
     pub locals: HashMap<String, LocalVarRecord>,
     pub parent: Box<Scope>,
     pub parent_fun_kind: Option<FunKind>,
@@ -105,30 +106,10 @@ struct BlockScope {
 impl BlockScope {
     #[inline]
     fn make_slot(&mut self, name: String, state: LocalVarState) -> Slot {
-        let mut parent_frame = &mut *self.parent;
-        loop {
-            match parent_frame {
-                Scope::Global(g) => {
-                    let index = g.slots;
-                    g.slots += 1;
-                    self.locals.insert(name.clone(),
-                      LocalVarRecord { index, state });
-                    return Slot { name, frame: 0, index };
-                },
-
-                Scope::Function(f, _, _) => {
-                    let index = f.slots;
-                    f.slots += 1;
-                    self.locals.insert(name.clone(),
-                      LocalVarRecord { index, state });
-                    return Slot { name, frame: 0, index };
-                },
-
-                Scope::Block(b) => {
-                    parent_frame = &mut *b.parent;
-                },
-            };
-        }
+        let index = self.slots;
+        self.slots += 1;
+        self.locals.insert(name.clone(), LocalVarRecord { index, state });
+        Slot { name, frame: 0, index }
     }
 }
 
@@ -164,6 +145,7 @@ impl Scope {
         let parent_fun_kind = self.fun_kind();
         let parent_class_kind = self.class_kind();
         Self::Block(BlockScope {
+            slots: 0,
             locals: HashMap::new(),
             parent: Box::new(self),
             parent_fun_kind,
@@ -213,7 +195,7 @@ impl Scope {
         match self {
             Self::Global(g) => g.slots,
             Self::Function(f, _, _) => f.slots,
-            Self::Block(_) => 0,
+            Self::Block(b) => b.slots,
         }
     }
 
@@ -264,7 +246,9 @@ impl Scope {
                         },
                     }
                 } else {
-                    b.parent.resolve(name, loc)
+                    let mut slot = b.parent.resolve(name, loc)?;
+                    slot.frame += 1;
+                    Ok(slot)
                 }
             },
         }
@@ -613,7 +597,7 @@ impl Resolver {
                 }
             },
 
-            Stmt::Block(body, loc) => {
+            Stmt::Block(body, (), loc) => {
                 self.enter_block();
                 let mut r_body = Vec::new();
                 let mut errs = ErrorBundle::new();
@@ -623,10 +607,10 @@ impl Resolver {
                         Err(es) => errs.append(es),
                     };
                 }
+                let slots = self.scope.slots();
                 self.exit_scope();
                 if errs.is_empty() {
-                    // TODO: block shouldn't carry slots
-                    Ok(Stmt::Block(r_body, loc))
+                    Ok(Stmt::Block(r_body, slots, loc))
                 } else {
                     Err(errs)
                 }
@@ -704,8 +688,6 @@ impl Resolver {
                 };
 
                 let super_slots = if let Some((src, dst)) = sup {
-                    self.enter_block();
-
                     if src == name {
                         errs.push(Error {
                             loc: Some(loc),
@@ -715,7 +697,10 @@ impl Resolver {
                         });
                     }
 
-                    match self.scope.resolve(src, loc) {
+                    // order is very important here!
+                    let src = self.scope.resolve(src, loc);
+                    self.enter_block();
+                    match src {
                         Ok(src) => {
                             match self.scope.define(dst, loc) {
                                 Ok(dst) => Some((src, dst)),

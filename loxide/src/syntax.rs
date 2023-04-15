@@ -139,7 +139,7 @@ pub enum Stmt<V, S> {
     While(Expr<V>, Box<Stmt<V, S>>, SrcLoc),
     Print(Expr<V>, SrcLoc),
     Return(Option<Expr<V>>, SrcLoc),
-    Block(Vec<Stmt<V, S>>, SrcLoc),
+    Block(Vec<Stmt<V, S>>, S, SrcLoc),
     VarDecl(V, Option<Expr<V>>, SrcLoc),
     FunDef(V, FunOrMethod<V, S>),
     /* this is hacky: the superclass has two "variable slots":
@@ -157,7 +157,7 @@ impl<V, S> Stmt<V, S> {
             Stmt::While(_, _, loc) => loc,
             Stmt::Print(_, loc) => loc,
             Stmt::Return(_, loc) => loc,
-            Stmt::Block(_, loc) => loc,
+            Stmt::Block(_, _, loc) => loc,
             Stmt::VarDecl(_, _, loc) => loc,
             Stmt::FunDef(_, f) => &f.location,
             Stmt::ClassDef(_, _, _, loc) => loc,
@@ -181,7 +181,7 @@ impl<V: fmt::Display, S> fmt::Display for Stmt<V, S> {
             Stmt::Print(e, _) => write!(f, "print {};", e),
             Stmt::Return(Some(e), _) => write!(f, "return {};", e),
             Stmt::Return(None, _) => write!(f, "return;"),
-            Stmt::Block(body, _) => {
+            Stmt::Block(body, _, _) => {
                 write!(f, "{{\n")?;
                 for s in body {
                     write!(f, "{}\n", s)?;
