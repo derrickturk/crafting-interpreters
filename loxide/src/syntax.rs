@@ -138,7 +138,11 @@ pub enum Stmt<V, S> {
     Block(Vec<Stmt<V, S>>, SrcLoc),
     VarDecl(V, Option<Expr<V>>, SrcLoc),
     FunDef(V, FunOrMethod<V, S>),
-    ClassDef(V, Option<V>, Vec<(String, FunOrMethod<V, S>)>, SrcLoc),
+    /* this is hacky: the superclass has two "variable slots":
+     *   the one pointing to the superclass (this is "read")
+     *   the one where the superclass object gets stored (this is "written")
+     */
+    ClassDef(V, Option<(V, V)>, Vec<(String, FunOrMethod<V, S>)>, SrcLoc),
 }
 
 impl<V, S> Stmt<V, S> {
@@ -202,7 +206,7 @@ impl<V: fmt::Display, S> fmt::Display for Stmt<V, S> {
             },
             Stmt::ClassDef(name, sup, methods, _) => {
                 write!(f, "class {}", name)?;
-                if let Some(cls) = sup {
+                if let Some((cls, _)) = sup {
                     write!(f, " < {}", cls)?;
                 }
                 write!(f, " {{\n")?;

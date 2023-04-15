@@ -451,15 +451,15 @@ impl Resolver {
                 }
             },
 
-            Expr::This(_, loc) => {
+            Expr::This(v, loc) => {
                 if self.scope.class_kind().is_none() {
                     Err(Error {
                         loc: Some(loc),
-                        lexeme: Some("this".to_string()),
+                        lexeme: Some(v),
                         details: ErrorDetails::InvalidThis,
                     })?
                 } else {
-                    let v = self.scope.resolve("this".to_string(), loc)
+                    let v = self.scope.resolve(v, loc)
                       .expect("internal error: 'this' not bound");
                     Ok(Expr::This(v, loc))
                 }
@@ -691,22 +691,22 @@ impl Resolver {
                     ClassKind::Class
                 };
 
-                let super_slot = if let Some(sup) = sup {
+                let super_slots = if let Some((src, dst)) = sup {
                     self.enter_block();
 
-                    if sup == name {
+                    if src == name {
                         errs.push(Error {
                             loc: Some(loc),
-                            lexeme: Some(sup.clone()),
+                            lexeme: Some(src.clone()),
                             details: ErrorDetails::CircularSuperclass(
-                              sup.clone()),
+                              src.clone()),
                         });
                     }
 
-                    match self.scope.resolve(sup, loc) {
-                        Ok(slot) => {
-                            match self.scope.define("super".to_string(), loc) {
-                                Ok(_) => Some(slot),
+                    match self.scope.resolve(src, loc) {
+                        Ok(src) => {
+                            match self.scope.define(dst, loc) {
+                                Ok(dst) => Some((src, dst)),
                                 Err(e) => {
                                     errs.push(e);
                                     None
@@ -749,7 +749,7 @@ impl Resolver {
                 };
 
                 if errs.is_empty() {
-                    Ok(Stmt::ClassDef(v.unwrap(), super_slot, r_methods, loc))
+                    Ok(Stmt::ClassDef(v.unwrap(), super_slots, r_methods, loc))
                 } else {
                     Err(errs)
                 }

@@ -1,6 +1,7 @@
 //! Loxide runtime values
 
 use std::{
+    cell::RefCell,
     collections::HashMap,
     fmt,
     rc::Rc,
@@ -22,6 +23,7 @@ pub enum Value {
     BuiltinFun(&'static str, usize, fn(Vec<Value>) -> Value),
     Class(Rc<Class>),
     Object(Rc<Object>),
+    BoundMethod(Rc<(String, FunOrMethod<Slot, usize>)>, Rc<Object>, Rc<Env>),
 }
 
 impl Value {
@@ -60,6 +62,12 @@ impl PartialEq for Value {
             (Value::Object(l), Value::Object(r)) => {
                 Rc::as_ptr(l) == Rc::as_ptr(r)
             },
+
+            (Value::BoundMethod(ld, lt, le), Value::BoundMethod(rd, rt, re)) => {
+                Rc::as_ptr(ld) == Rc::as_ptr(rd)
+                  && Rc::as_ptr(lt) == Rc::as_ptr(rt)
+                  && Rc::as_ptr(le) == Rc::as_ptr(re)
+            },
             (_, _) => false,
         }
     }
@@ -81,6 +89,8 @@ impl fmt::Display for Value {
                 write!(f, "<class {}>", c.name),
             Value::Object(o) =>
                 write!(f, "<{} object>", o.class.name),
+            Value::BoundMethod(d, o, _) =>
+                write!(f, "<bound method {}.{}>", o.class.name, d.0),
         }
     }
 }
@@ -88,14 +98,78 @@ impl fmt::Display for Value {
 /// A runtime Lox class
 #[derive(Clone, Debug)]
 pub struct Class {
-    pub name: String,
-    pub superclass: Option<Rc<Class>>,
-    pub methods: HashMap<String, Value>,
+    name: String,
+    superclass: Option<Rc<Class>>,
+    methods: HashMap<String, (Rc<(String, FunOrMethod<Slot, usize>)>, Rc<Env>)>,
+}
+
+impl Class {
+    #[inline]
+    pub fn new(name: String, superclass: Option<Rc<Class>>) -> Self {
+        Self {
+            name,
+            superclass,
+            methods: HashMap::new(),
+        }
+    }
+
+    #[inline]
+    pub fn add_method(&mut self, name: String,
+      def: FunOrMethod<Slot, usize>, env: Rc<Env>) {
+        self.methods.insert(name.clone(), (Rc::new((name, def)), env));
+    }
+
+    #[inline]
+    pub fn find_method(&self, name: &str
+      ) -> Option<(Rc<(String, FunOrMethod<Slot, usize>)>, Rc<Env>)> {
+        if let Some(val) = self.methods.get(name) {
+            Some(val.clone())
+        } else if let Some(sup) = &self.superclass {
+            sup.find_method(name)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn arity(&self) -> usize {
+        if let Some((def, _)) = self.find_method("init") {
+            def.1.parameters.len()
+        } else {
+            0
+        }
+    }
 }
 
 /// A runtime Lox object
 #[derive(Clone, Debug)]
 pub struct Object {
-    pub class: Rc<Class>,
-    pub fields: HashMap<String, Value>,
+    class: Rc<Class>,
+    fields: RefCell<HashMap<String, Value>>,
+}
+
+impl Object {
+    #[inline]
+    pub fn new(class: Rc<Class>) -> Self {
+        Self {
+            class,
+            fields: RefCell::new(HashMap::new()),
+        }
+    }
+
+    #[inline]
+    pub fn get_property(self: Rc<Self>, name: &str) -> Option<Value> {
+        if let Some(f) = self.fields.borrow().get(name) {
+            Some(f.clone())
+        } else if let Some((def, env)) = self.class.find_method(name) {
+            Some(Value::BoundMethod(def, Rc::clone(&self), env))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn set_property(&self, name: String, value: Value) {
+        self.fields.borrow_mut().insert(name, value);
+    }
 }

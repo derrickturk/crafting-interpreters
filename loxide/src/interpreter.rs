@@ -17,12 +17,22 @@ macro_rules! type_error {
     };
 }
 
-macro_rules! undef_error {
+macro_rules! undef_var_error {
     ($loc:expr, $varname:expr) => {
         Error {
             loc: Some($loc),
             lexeme: None,
             details: ErrorDetails::UndefinedVariable($varname),
+        }
+    };
+}
+
+macro_rules! undef_property_error {
+    ($loc:expr, $propname:expr) => {
+        Error {
+            loc: Some($loc),
+            lexeme: None,
+            details: ErrorDetails::UndefinedProperty($propname),
         }
     };
 }
@@ -140,7 +150,7 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
         Expr::Var(v, loc) => {
             match env.get(v.frame, v.index) {
                 Some(val) => Ok(val.clone()),
-                None => Err(undef_error!(*loc, v.name.clone())),
+                None => Err(undef_var_error!(*loc, v.name.clone())),
             }
         },
 
@@ -151,7 +161,7 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
                     *dst = val.clone();
                     Ok(val)
                 },
-                None => Err(undef_error!(*loc, v.name.clone())),
+                None => Err(undef_var_error!(*loc, v.name.clone())),
             }
         },
 
@@ -203,6 +213,38 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
                 _ => Err(type_error!(*loc, "(", "callee is not callable")),
             }
         }
+
+        Expr::This(v, _) => {
+            Ok(env.get(v.frame, v.index)
+              .expect("internal error: this is missing").clone())
+        },
+
+        Expr::PropertyGet(e, name, loc) => {
+            match eval(env, e)? {
+                Value::Object(o) => {
+                    if let Some(p) = o.get_property(&name) {
+                        Ok(p)
+                    } else {
+                        Err(undef_property_error!(*loc, name.clone()))
+                    }
+                },
+                _ => {
+                    Err(type_error!(*loc, ".", "property access on non-object"))
+                },
+            }
+        },
+
+        Expr::PropertySet(lhs, name, rhs, loc) => {
+            let obj = match eval(env, lhs)? {
+                Value::Object(o) =>
+                    Ok(o),
+                _ =>
+                    Err(type_error!(*loc, ".", "property access on non-object"))
+            }?;
+            let val = eval(env, rhs)?;
+            obj.set_property(name.clone(), val.clone());
+            Ok(val)
+        },
     }
 }
 
@@ -270,6 +312,39 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
             let fun = Value::Fun(
               Rc::new((v.name.clone(), def.clone())), env.clone());
             env.set(v.frame, v.index, fun);
+            Ok(())
+        },
+
+        Stmt::ClassDef(v, sup, methods, loc) => {
+            let sup = match sup {
+                Some((src, dst)) => Some({
+                    let val = match env.get(src.frame, src.index) {
+                        Some(val) => Ok(val.clone()),
+                        None => Err(undef_var_error!(*loc, v.name.clone())),
+                    }?;
+                    match val {
+                        Value::Class(c) => {
+                            env.set(dst.frame, dst.index,
+                              Value::Class(Rc::clone(&c)));
+                            Ok(c)
+                        },
+                        _ => {
+                            Err(Error {
+                                loc: Some(*loc),
+                                lexeme: Some(src.name.clone()),
+                                details: ErrorDetails::InvalidSuperclass(val),
+                            })
+                        },
+                    }?
+                }),
+                None => None,
+            };
+
+            let mut cls = Class::new(v.name.clone(), sup);
+            for (name, def) in methods {
+                cls.add_method(name.clone(), def.clone(), Rc::clone(env));
+            }
+            env.set(v.frame, v.index, Value::Class(Rc::new(cls)));
             Ok(())
         },
     }

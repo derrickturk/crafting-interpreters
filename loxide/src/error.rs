@@ -46,6 +46,7 @@ pub enum ErrorDetails {
     ExplicitInitializerReturn,
     InvalidReturn,
     InvalidSuper,
+    InvalidSuperclass(Value),
     InvalidThis,
     NotLValue(String),
     ParseExpected(&'static str),
@@ -77,6 +78,8 @@ impl Display for ErrorDetails {
                 write!(f, "return outside function or method"),
             ErrorDetails::InvalidSuper =>
                 write!(f, "super outside subclass method"),
+            ErrorDetails::InvalidSuperclass(v) =>
+                write!(f, "invalid superclass {}", v),
             ErrorDetails::InvalidThis =>
                 write!(f, "this outside method"),
             ErrorDetails::NotLValue(what) =>
