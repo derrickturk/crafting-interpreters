@@ -143,6 +143,10 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
             return self.fundef_or_method_rest(tok);
         }
 
+        if let Some(cls) = match_token!(self, TokenKind::Class) {
+            return self.classdef_rest(cls);
+        }
+
         self.statement()
     }
 
@@ -230,6 +234,23 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
             slots: (),
             location: fun.loc,
         }))
+    }
+
+    fn classdef_rest(&mut self, cls: Token) -> Option<Stmt<String, ()>> {
+        let name = require_extract!(self,
+          "identifier", TokenKind::Ident(name), name.to_string());
+        let sup = if let Some(_) = match_token!(self, TokenKind::Lt) {
+            Some((
+              require_extract!(self,
+                "identifier", TokenKind::Ident(sup), sup.to_string()),
+              "super".to_string()
+            ))
+        } else {
+            None
+        };
+        require!(self, "'{'", TokenKind::LBrace);
+        require!(self, "'}'", TokenKind::RBrace);
+        Some(Stmt::ClassDef(name, sup, vec![], cls.loc))
     }
 
     fn if_else_rest(&mut self, t_if: Token) -> Option<Stmt<String, ()>> {
@@ -328,6 +349,8 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
             match e {
                 Expr::Var(v, loc) =>
                     Some(Expr::Assign(v, Box::new(val), loc)),
+                Expr::PropertyGet(e, name, loc) =>
+                    Some(Expr::PropertySet(e, name, Box::new(val), loc)),
                 _ => {
                     self.errors.push(Error {
                         loc: Some(tok.loc),
@@ -364,8 +387,21 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
     #[inline]
     fn call(&mut self) -> Option<Expr<String>> {
         let mut e = self.primary()?;
-        while let Some(lparen) = match_token!(self, TokenKind::LParen) {
-            e = self.call_rest(e, lparen)?;
+        while let Some(tok) = match_token!(self, TokenKind::LParen | TokenKind::Dot) {
+            match tok.kind {
+                TokenKind::LParen => {
+                    e = self.call_rest(e, tok)?;
+                },
+
+                TokenKind::Dot => {
+                    let name = require_extract!(self,
+                      "property name", TokenKind::Ident(name),
+                      name.to_string());
+                    e = Expr::PropertyGet(Box::new(e), name, tok.loc);
+                },
+
+                _ => panic!("internal error: impossible token in call()"),
+            };
         }
         Some(e)
     }
@@ -402,9 +438,21 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
             return Some(Expr::Literal(token_literal(&tok).unwrap(), tok.loc));
         }
 
+        if let Some(tok) = match_token!(self, TokenKind::This) {
+            return Some(Expr::This(tok.lexeme.to_string(), tok.loc));
+        }
+
         if let Some(Token { kind: TokenKind::Ident(name), loc, .. }) =
           match_token!(self, TokenKind::Ident(_)) {
             return Some(Expr::Var(name.to_string(), loc));
+        }
+
+        if let Some(tok) = match_token!(self, TokenKind::Super) {
+            require!(self, "'.'", TokenKind::Dot);
+            let name = require_extract!(self,
+              "method name", TokenKind::Ident(name), name.to_string());
+            return Some(Expr::Super(tok.lexeme.to_string(),
+              "this".to_string(), name, tok.loc));
         }
 
         if let Some(_) = match_token!(self, TokenKind::LParen) {
