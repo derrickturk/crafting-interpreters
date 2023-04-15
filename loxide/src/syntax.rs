@@ -71,7 +71,11 @@ pub enum Expr<V> {
     This(V, SrcLoc),
     PropertyGet(Box<Expr<V>>, String, SrcLoc),
     PropertySet(Box<Expr<V>>, String, Box<Expr<V>>, SrcLoc),
-    Super(V, String, SrcLoc),
+    /* this is hacky: super has two variable slots
+     *   one for the superclass
+     *   one for "this"
+     */
+    Super(V, V, String, SrcLoc),
 }
 
 impl<V> Expr<V> {
@@ -86,7 +90,7 @@ impl<V> Expr<V> {
             Expr::This(_, loc) => loc,
             Expr::PropertyGet(_, _, loc) => loc,
             Expr::PropertySet(_, _, _, loc) => loc,
-            Expr::Super(_, _, loc) => loc,
+            Expr::Super(_, _, _, loc) => loc,
         }
     }
 }
@@ -113,7 +117,7 @@ impl<V: fmt::Display> fmt::Display for Expr<V> {
             Expr::PropertyGet(o, name, _) => write!(f, "{}.{}", o, name),
             Expr::PropertySet(o, name, e, _) =>
               write!(f, "({}.{} = {})", o, name, e),
-            Expr::Super(_, name, _) => write!(f, "super.{}", name),
+            Expr::Super(_, _, name, _) => write!(f, "super.{}", name),
         }
     }
 }

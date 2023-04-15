@@ -210,6 +210,35 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
                     Ok(ptr(argv))
                 },
 
+                Value::BoundMethod(def, this, closure) => {
+                    if args.len() != def.1.parameters.len() {
+                        return Err(Error {
+                            loc: Some(*loc),
+                            lexeme: None,
+                            details: ErrorDetails::ArityMismatch(
+                              def.0.clone(), def.1.parameters.len(),
+                              args.len()),
+                        });
+                    }
+
+                    let frame = closure.child(def.1.slots);
+                    /* in principle this shouldn't be hard coded, but hell,
+                     *   I don't care anymore. */
+                    frame.set(0, 0, Value::Object(this));
+                    for (p, a) in def.1.parameters.iter().zip(args.iter()) {
+                        frame.set(p.frame, p.index, eval(env, a)?);
+                    }
+
+                    match run(&frame, &def.1.body) {
+                        Err(Error { details: ErrorDetails::Return(val), .. }) =>
+                            Ok(val),
+                        Ok(()) =>
+                            Ok(Value::Nil),
+                        Err(e) =>
+                            Err(e)
+                    }
+                },
+
                 _ => Err(type_error!(*loc, "(", "callee is not callable")),
             }
         }
@@ -244,6 +273,24 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
             let val = eval(env, rhs)?;
             obj.set_property(name.clone(), val.clone());
             Ok(val)
+        },
+
+        Expr::Super(sup, this, name, loc) => {
+            let sup = match env.get(sup.frame, sup.index).map(|v| v.clone()) {
+                Some(Value::Class(c)) => c,
+                _ => panic!("internal error: super is missing or invalid"),
+            };
+
+            let this = match env.get(this.frame, this.index).map(|v| v.clone()) {
+                Some(Value::Object(o)) => o,
+                _ => panic!("internal error: this is missing or invalid"),
+            };
+
+            if let Some((def, env)) = sup.find_method(&name) {
+                Ok(Value::BoundMethod(def, this, env))
+            } else {
+                Err(undef_property_error!(*loc, name.clone()))
+            }
         },
     }
 }

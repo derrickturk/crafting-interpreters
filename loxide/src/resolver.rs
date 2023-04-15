@@ -451,17 +451,17 @@ impl Resolver {
                 }
             },
 
-            Expr::This(v, loc) => {
+            Expr::This(this, loc) => {
                 if self.scope.class_kind().is_none() {
                     Err(Error {
                         loc: Some(loc),
-                        lexeme: Some(v),
+                        lexeme: Some(this),
                         details: ErrorDetails::InvalidThis,
                     })?
                 } else {
-                    let v = self.scope.resolve(v, loc)
+                    let this = self.scope.resolve(this, loc)
                       .expect("internal error: 'this' not bound");
-                    Ok(Expr::This(v, loc))
+                    Ok(Expr::This(this, loc))
                 }
             },
 
@@ -484,17 +484,19 @@ impl Resolver {
                 }
             },
 
-            Expr::Super(_, name, loc) => {
+            Expr::Super(sup, this, name, loc) => {
                 match self.scope.class_kind() {
                     Some(ClassKind::SubClass) => {
-                        let v = self.scope.resolve("super".to_string(), loc)
+                        let sup = self.scope.resolve(sup, loc)
                           .expect("internal error: 'super' not bound");
-                        Ok(Expr::Super(v, name, loc))
+                        let this = self.scope.resolve(this, loc)
+                          .expect("internal error: 'this' not bound");
+                        Ok(Expr::Super(sup, this, name, loc))
                     },
                     _ => {
                         Err(Error {
                             loc: Some(loc),
-                            lexeme: Some("super".to_string()),
+                            lexeme: Some(sup),
                             details: ErrorDetails::InvalidSuper,
                         })?
                     }
