@@ -139,6 +139,11 @@ impl Class {
             0
         }
     }
+
+    #[inline]
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
 }
 
 /// A runtime Lox object

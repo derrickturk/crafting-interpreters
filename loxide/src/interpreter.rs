@@ -239,6 +239,38 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
                     }
                 },
 
+                // arggggg this sucks
+                Value::Class(c) => {
+                    if args.len() != c.arity() {
+                        return Err(Error {
+                            loc: Some(*loc),
+                            lexeme: None,
+                            details: ErrorDetails::ArityMismatch(
+                              c.name(), c.arity(), args.len()),
+                        });
+                    }
+
+                    let o = Value::Object(Rc::new(Object::new(Rc::clone(&c))));
+                    if let Some((init, closure)) = c.find_method("init") {
+                        let frame = closure.child(init.1.slots);
+                        frame.set(0, 0, o.clone());
+                        for (p, a) in init.1.parameters.iter().zip(args.iter()) {
+                            frame.set(p.frame, p.index, eval(env, a)?);
+                        }
+
+                        match run(&frame, &init.1.body) {
+                            Err(Error { details: ErrorDetails::Return(_), .. }) =>
+                                Ok(o),
+                            Ok(()) =>
+                                Ok(o),
+                            Err(e) =>
+                                Err(e),
+                        }
+                    } else {
+                        Ok(o)
+                    }
+                },
+
                 _ => Err(type_error!(*loc, "(", "callee is not callable")),
             }
         }
