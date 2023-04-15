@@ -224,18 +224,25 @@ pub fn eval(env: &Rc<Env>, expr: &Expr<Slot>) -> error::Result<Value> {
                     let frame = closure.child(def.1.slots);
                     /* in principle this shouldn't be hard coded, but hell,
                      *   I don't care anymore. */
-                    frame.set(0, 0, Value::Object(this));
+                    frame.set(0, 0, Value::Object(Rc::clone(&this)));
                     for (p, a) in def.1.parameters.iter().zip(args.iter()) {
                         frame.set(p.frame, p.index, eval(env, a)?);
                     }
 
-                    match run(&frame, &def.1.body) {
+                    let ret = match run(&frame, &def.1.body) {
                         Err(Error { details: ErrorDetails::Return(val), .. }) =>
                             Ok(val),
                         Ok(()) =>
                             Ok(Value::Nil),
                         Err(e) =>
                             Err(e)
+                    }?;
+
+                    // YHGTBFKM
+                    if def.0 == "init" {
+                        Ok(Value::Object(Rc::clone(&this)))
+                    } else {
+                        Ok(ret)
                     }
                 },
 

@@ -199,6 +199,16 @@ impl Scope {
     }
 
     #[inline]
+    fn enclosing_class_kind(&self) -> Option<ClassKind> {
+        match self {
+            Self::Global(_) => None,
+            Self::Function(f, _, None) => f.parent.enclosing_class_kind(),
+            Self::Function(_, _, Some(k)) => Some(*k),
+            Self::Block(b) => b.parent.enclosing_class_kind(),
+        }
+    }
+
+    #[inline]
     fn slots(&self) -> usize {
         match self {
             Self::Global(g) => g.slots,
@@ -452,7 +462,7 @@ impl Resolver {
             },
 
             Expr::This(this, loc) => {
-                if self.scope.class_kind().is_none() {
+                if self.scope.enclosing_class_kind().is_none() {
                     Err(Error {
                         loc: Some(loc),
                         lexeme: Some(this),
@@ -485,7 +495,7 @@ impl Resolver {
             },
 
             Expr::Super(sup, this, name, loc) => {
-                match self.scope.class_kind() {
+                match self.scope.enclosing_class_kind() {
                     Some(ClassKind::SubClass) => {
                         let sup = self.scope.resolve(sup, loc)
                           .expect("internal error: 'super' not bound");
