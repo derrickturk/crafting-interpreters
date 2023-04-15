@@ -5,7 +5,8 @@ use std::{
 
 use crate::{
     error::{self, Error, ErrorBundle, ErrorDetails,},
-    lexer::{Token, TokenKind,},
+    lexer::{Token, TokenKind},
+    srcloc::SrcLoc,
     syntax::*,
     value::Value,
 };
@@ -140,7 +141,7 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         }
 
         if let Some(tok) = match_token!(self, TokenKind::Fun) {
-            return self.fundef_or_method_rest(tok);
+            return self.fundef_rest(tok);
         }
 
         if let Some(cls) = match_token!(self, TokenKind::Class) {
@@ -198,10 +199,44 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         Some(Stmt::VarDecl(name, init, var.loc))
     }
 
-    fn fundef_or_method_rest(&mut self, fun: Token
+    #[inline]
+    fn fundef_rest(&mut self, fun: Token
       ) -> Option<Stmt<String, ()>> {
         let name = require_extract!(self,
           "identifier", TokenKind::Ident(name), name.to_string());
+        let def = self.fun_or_method(fun.loc)?;
+        Some(Stmt::FunDef(name, def))
+    }
+
+    fn classdef_rest(&mut self, cls: Token) -> Option<Stmt<String, ()>> {
+        let name = require_extract!(self,
+          "identifier", TokenKind::Ident(name), name.to_string());
+        let sup = if let Some(_) = match_token!(self, TokenKind::Lt) {
+            Some((
+              require_extract!(self,
+                "identifier", TokenKind::Ident(sup), sup.to_string()),
+              "super".to_string()
+            ))
+        } else {
+            None
+        };
+        require!(self, "'{'", TokenKind::LBrace);
+        let mut methods = Vec::new();
+        while !check_token!(self, TokenKind::RBrace) && !self.is_eof() {
+            let name_tok = require!(self, "method name", TokenKind::Ident(_));
+            let name = match name_tok.kind {
+                TokenKind::Ident(name) => name.to_string(),
+                _ => panic!("internal error: impossible method name"),
+            };
+            let def = self.fun_or_method(name_tok.loc)?;
+            methods.push((name, def));
+        }
+        require!(self, "'}'", TokenKind::RBrace);
+        Some(Stmt::ClassDef(name, sup, methods, cls.loc))
+    }
+
+    fn fun_or_method(&mut self, loc: SrcLoc
+      ) -> Option<FunOrMethod<String, ()>> {
         require!(self, "'('", TokenKind::LParen);
 
         let mut params = Vec::new();
@@ -228,29 +263,12 @@ impl<'a, I: Iterator<Item=error::Result<Token<'a>>>> Parser<'a, I> {
         require!(self, "'{'", TokenKind::LBrace);
         let body = self.block_rest()?;
 
-        Some(Stmt::FunDef(name, FunOrMethod {
+        Some(FunOrMethod {
             parameters: params,
             body,
             slots: (),
-            location: fun.loc,
-        }))
-    }
-
-    fn classdef_rest(&mut self, cls: Token) -> Option<Stmt<String, ()>> {
-        let name = require_extract!(self,
-          "identifier", TokenKind::Ident(name), name.to_string());
-        let sup = if let Some(_) = match_token!(self, TokenKind::Lt) {
-            Some((
-              require_extract!(self,
-                "identifier", TokenKind::Ident(sup), sup.to_string()),
-              "super".to_string()
-            ))
-        } else {
-            None
-        };
-        require!(self, "'{'", TokenKind::LBrace);
-        require!(self, "'}'", TokenKind::RBrace);
-        Some(Stmt::ClassDef(name, sup, vec![], cls.loc))
+            location: loc,
+        })
     }
 
     fn if_else_rest(&mut self, t_if: Token) -> Option<Stmt<String, ()>> {
