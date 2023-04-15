@@ -177,4 +177,9 @@ impl Object {
     pub fn set_property(&self, name: String, value: Value) {
         self.fields.borrow_mut().insert(name, value);
     }
+
+    #[inline]
+    pub fn class(&self) -> &Class {
+        &self.class
+    }
 }

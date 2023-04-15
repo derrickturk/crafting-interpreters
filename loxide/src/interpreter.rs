@@ -403,6 +403,7 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
         },
 
         Stmt::ClassDef(v, sup, methods, loc) => {
+            let mut frame = Rc::clone(env);
             let sup = match sup {
                 Some((src, dst)) => Some({
                     let val = match env.get(src.frame, src.index) {
@@ -411,7 +412,8 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
                     }?;
                     match val {
                         Value::Class(c) => {
-                            env.set(dst.frame, dst.index,
+                            frame = env.child(1);
+                            frame.set(dst.frame, dst.index,
                               Value::Class(Rc::clone(&c)));
                             Ok(c)
                         },
@@ -429,7 +431,7 @@ pub fn exec(env: &Rc<Env>, stmt: &Stmt<Slot, usize>) -> error::Result<()> {
 
             let mut cls = Class::new(v.name.clone(), sup);
             for (name, def) in methods {
-                cls.add_method(name.clone(), def.clone(), Rc::clone(env));
+                cls.add_method(name.clone(), def.clone(), Rc::clone(&frame));
             }
             env.set(v.frame, v.index, Value::Class(Rc::new(cls)));
             Ok(())
