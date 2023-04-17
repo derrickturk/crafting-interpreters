@@ -9,7 +9,7 @@
 #define LOX_PANIC(msg) \
     lox_panic(__FILE__ ", line " LOX_STRINGIZE(__LINE__) ": " msg)
 
-static inline void lox_panic(const char* msg)
+_Noreturn static inline void lox_panic(const char* msg)
 {
     fprintf(stderr, "panic: %s\n", msg);
     exit(EXIT_FAILURE);

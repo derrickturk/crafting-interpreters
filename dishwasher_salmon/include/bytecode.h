@@ -24,8 +24,9 @@ static inline void chunk_init(chunk* chunk)
 static inline void chunk_write(chunk* chunk, uint8_t byte)
 {
     if (chunk->count + 1 > chunk->capacity) {
-        MEM_ARRAY_REALLOC(uint8_t, chunk->code,
-          mem_grow_capacity(chunk->capacity));
+        size_t new_capacity = mem_grow_capacity(chunk->capacity);
+        chunk->code = MEM_ARRAY_REALLOC(uint8_t, chunk->code, new_capacity);
+        chunk->capacity = new_capacity;
     }
 
     chunk->code[chunk->count++] = byte;

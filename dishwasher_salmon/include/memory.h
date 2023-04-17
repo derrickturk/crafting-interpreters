@@ -13,7 +13,7 @@
 
 static inline size_t mem_grow_capacity(size_t old)
 {
-    return old * 1.5;
+    return old < 8 ? 8 : old * 1.5;
 }
 
 static inline void* mem_reallocate(void* ptr, size_t new_size)
