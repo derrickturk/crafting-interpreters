@@ -1,12 +1,12 @@
-#include "common.h"
-#include "bytecode.h"
-#include "debug.h"
+#include "ds/common.h"
+#include "ds/bytecode.h"
+#include "ds/debug.h"
 
 int main(int argc, char* argv[])
 {
-    chunk c;
-    chunk_init(&c);
-    chunk_write(&c, OP_RETURN);
-    dbg_disassemble_chunk(&c, "test chunk");
+    ds_chunk c;
+    ds_chunk_init(&c);
+    ds_chunk_write(&c, OP_RETURN);
+    ds_disassemble_chunk(&c, "test chunk");
     return 0;
 }

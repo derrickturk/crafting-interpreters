@@ -1,22 +1,22 @@
-#ifndef LOX_MEMORY_H
-#define LOX_MEMORY_H
+#ifndef DS_MEMORY_H
+#define DS_MEMORY_H
 
-#include "common.h"
+#include "ds/common.h"
 
 #include <stdlib.h>
 
 #define MEM_ARRAY_REALLOC(type, ptr, new_count) \
-    mem_reallocate(ptr, sizeof(type) * new_count)
+    ds_reallocate(ptr, sizeof(type) * new_count)
 
 #define MEM_ARRAY_FREE(type, ptr) \
-    mem_reallocate(ptr, 0)
+    ds_reallocate(ptr, 0)
 
-static inline size_t mem_grow_capacity(size_t old)
+static inline size_t ds_grow_capacity(size_t old)
 {
     return old < 8 ? 8 : old * 1.5;
 }
 
-static inline void* mem_reallocate(void* ptr, size_t new_size)
+static inline void* ds_reallocate(void* ptr, size_t new_size)
 {
     if (!new_size) {
         free(ptr);
@@ -25,7 +25,7 @@ static inline void* mem_reallocate(void* ptr, size_t new_size)
 
     void* ret = realloc(ptr, new_size);
     if (!ret)
-        LOX_PANIC("(re)allocation failed");
+        DS_PANIC("(re)allocation failed");
     return ret;
 }
 
