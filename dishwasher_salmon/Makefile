@@ -2,7 +2,7 @@ CC?=gcc
 CCOPTS?=-std=c11 -Iinclude -Wall -Wextra -pedantic -static -O2
 CCOPTS_DBG?=-std=c11 -Iinclude -Wall -Wextra -pedantic -static -g
 
-HDRS=$(wildcard include/*.h)
+HDRS=$(wildcard include/ds/*.h)
 OBJS=$(patsubst src/%.c, build/%.o, $(wildcard src/*.c))
 OBJS_DBG=$(patsubst src/%.c, build/%_dbg.o, $(wildcard src/*.c))
 
