@@ -9,7 +9,7 @@
 #define DS_PANIC(msg) \
     ds_panic(__FILE__ ", line " DS_STRINGIZE(__LINE__) ": " msg)
 
-_Noreturn static inline void ds_panic(const char* msg)
+_Noreturn static inline void ds_panic(const char *msg)
 {
     fprintf(stderr, "panic: %s\n", msg);
     exit(EXIT_FAILURE);
