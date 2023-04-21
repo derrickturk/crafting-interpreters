@@ -14,6 +14,11 @@ void ds_disassemble_chunk(const ds_chunk *chunk, const char *name)
 
 size_t ds_disassemble_instr(const ds_chunk *chunk, size_t ip)
 {
+    printf("%04zu ", ip);
+    if (ip > 0 && chunk->lines[ip] == chunk->lines[ip - 1])
+        printf("   | ");
+    else
+        printf("%4d ", chunk->lines[ip]);
     switch (chunk->code[ip]) {
         // TODO: macrotize these...
         case OP_CONST:
