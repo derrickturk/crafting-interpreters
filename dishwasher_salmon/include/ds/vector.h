@@ -28,14 +28,15 @@ static inline void ds_vector_##ty##_free(ds_vector_##ty *vec) \
     ds_reallocate(vec->data, 0); \
 } \
 \
-static inline void ds_vector_##ty##_append(ds_vector_##ty *vec, ty value) \
+static inline size_t ds_vector_##ty##_append(ds_vector_##ty *vec, ty value) \
 { \
     if (vec->count >= vec->capacity) { \
         size_t new_capacity = ds_grow_capacity(vec->capacity); \
         vec->data = ds_reallocate(vec->data, sizeof(ty) * new_capacity); \
         vec->capacity = new_capacity; \
     } \
-    vec->data[vec->count++] = value; \
+    vec->data[vec->count] = value; \
+    return vec->count++; \
 }
 
 DS_VECTOR_DEFINE(uint8_t)

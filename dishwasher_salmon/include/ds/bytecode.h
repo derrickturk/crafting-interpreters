@@ -8,6 +8,7 @@
 
 typedef enum ds_opcode {
     OP_CONST,
+    OP_CONST_LONG,
     OP_RETURN,
 } ds_opcode;
 
@@ -39,15 +40,8 @@ static inline void ds_chunk_free(ds_chunk* chunk)
 }
 
 void ds_chunk_write(ds_chunk *chunk, uint8_t byte, uint16_t line);
+void ds_chunk_write_const(ds_chunk *chunk, ds_value value, uint16_t line);
 
-static inline uint8_t ds_chunk_add_const(ds_chunk *chunk, ds_value value)
-{
-    if (chunk->consts.count == UINT8_MAX)
-        DS_PANIC("too many consts");
-    ds_vector_ds_value_append(&chunk->consts, value);
-    return chunk->consts.count - 1;
-}
-
-uint16_t ds_instruction_line(const ds_chunk *chunk, size_t ip);
+uint16_t ds_chunk_instruction_line(const ds_chunk *chunk, size_t ip);
 
 #endif
