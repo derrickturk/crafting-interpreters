@@ -42,6 +42,6 @@ static inline void ds_chunk_free(ds_chunk* chunk)
 void ds_chunk_write(ds_chunk *chunk, uint8_t byte, uint16_t line);
 void ds_chunk_write_const(ds_chunk *chunk, ds_value value, uint16_t line);
 
-uint16_t ds_chunk_instruction_line(const ds_chunk *chunk, size_t ip);
+uint16_t ds_chunk_instr_line(const ds_chunk *chunk, size_t ip);
 
 #endif

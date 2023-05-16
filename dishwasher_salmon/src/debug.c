@@ -17,8 +17,8 @@ void ds_disassemble_chunk(const ds_chunk *chunk, const char *name)
 size_t ds_disassemble_instr(const ds_chunk *chunk, size_t ip)
 {
     printf("%04zu ", ip);
-    uint16_t line = ds_chunk_instruction_line(chunk, ip);
-    if (ip > 0 && line == ds_chunk_instruction_line(chunk, ip - 1))
+    uint16_t line = ds_chunk_instr_line(chunk, ip);
+    if (ip > 0 && line == ds_chunk_instr_line(chunk, ip - 1))
         printf("   | ");
     else
         printf("%4d ", line);

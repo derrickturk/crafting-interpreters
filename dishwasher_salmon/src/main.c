@@ -19,7 +19,8 @@ int main(int argc, char *argv[])
     ds_chunk_write(&c, OP_RETURN, 1);
     ds_chunk_write_const(&c, (ds_value){ .d = 37.2 }, 1);
     for (size_t i = 0; i < UINT8_MAX + 3; ++i) {
-        ds_chunk_write_const(&c, (ds_value){ .d = i * 0.1 }, 2 + (i / 3));
+        uint16_t line = 2 + i / 3;
+        ds_chunk_write_const(&c, (ds_value){ .d = i * 0.1 }, line);
     }
     ds_disassemble_chunk(&c, "test chunk");
     return 0;
