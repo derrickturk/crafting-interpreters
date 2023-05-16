@@ -6,7 +6,7 @@
 
 typedef struct ds_value { double d; } ds_value;
 
-DS_VECTOR(ds_value)
+DS_VECTOR_DEFINE(ds_value)
 
 void ds_value_print(ds_value value);
 

@@ -16,7 +16,7 @@ typedef struct ds_line_rle {
     uint16_t repeat;
 } ds_line_rle;
 
-DS_VECTOR(ds_line_rle)
+DS_VECTOR_DEFINE(ds_line_rle)
 
 typedef struct ds_chunk {
     ds_vector_uint8_t code;

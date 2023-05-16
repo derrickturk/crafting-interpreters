@@ -9,7 +9,7 @@ static inline size_t ds_grow_capacity(size_t old)
     return old < 8 ? 8 : old * 1.5;
 }
 
-#define DS_VECTOR(ty) \
+#define DS_VECTOR_DEFINE(ty) \
 typedef struct ds_vector_##ty { \
     size_t capacity; \
     size_t count; \
@@ -36,9 +36,9 @@ static inline void ds_vector_##ty##_append(ds_vector_##ty *vec, ty value) \
         vec->capacity = new_capacity; \
     } \
     vec->data[vec->count++] = value; \
-} \
+}
 
-DS_VECTOR(uint8_t)
-DS_VECTOR(uint16_t)
+DS_VECTOR_DEFINE(uint8_t)
+DS_VECTOR_DEFINE(uint16_t)
 
 #endif
