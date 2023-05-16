@@ -24,4 +24,6 @@ static void record_instr_line(ds_vector_ds_line_rle *lines, uint16_t line)
 {
     if (lines->count == 0 || lines->data[lines->count - 1].line != line)
         ds_vector_ds_line_rle_append(lines, (ds_line_rle) { line, 1 });
+    else
+        ++lines->data[lines->count - 1].repeat;
 }
