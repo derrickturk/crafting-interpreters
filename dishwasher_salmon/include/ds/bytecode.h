@@ -4,55 +4,50 @@
 #include "ds/common.h"
 #include "ds/memory.h"
 #include "ds/value.h"
+#include "ds/vector.h"
 
 typedef enum ds_opcode {
     OP_CONST,
     OP_RETURN,
-} opcode;
+} ds_opcode;
+
+typedef struct ds_line_rle {
+    uint16_t line;
+    uint16_t repeat;
+} ds_line_rle;
+
+DS_VECTOR(ds_line_rle)
 
 typedef struct ds_chunk {
-    size_t capacity;
-    size_t count;
-    uint8_t *code;
-    uint16_t *lines;
-    ds_value_array consts;
+    ds_vector_uint8_t code;
+    ds_vector_ds_line_rle lines;
+    ds_vector_ds_value consts;
 } ds_chunk;
 
 static inline void ds_chunk_init(ds_chunk *chunk)
 {
-    chunk->capacity = 0;
-    chunk->count = 0;
-    chunk->code = NULL;
-    chunk->lines = NULL;
-    ds_value_array_init(&chunk->consts);
-}
-
-static inline void ds_chunk_write(ds_chunk *chunk, uint8_t byte, uint16_t line)
-{
-    if (chunk->count + 1 > chunk->capacity) {
-        size_t new_capacity = ds_grow_capacity(chunk->capacity);
-        chunk->code = DS_ARRAY_REALLOC(uint8_t, chunk->code, new_capacity);
-        chunk->lines = DS_ARRAY_REALLOC(uint16_t, chunk->lines, new_capacity);
-        chunk->capacity = new_capacity;
-    }
-    chunk->lines[chunk->count] = line;
-    chunk->code[chunk->count++] = byte;
+    ds_vector_uint8_t_init(&chunk->code);
+    ds_vector_ds_line_rle_init(&chunk->lines);
+    ds_vector_ds_value_init(&chunk->consts);
 }
 
 static inline void ds_chunk_free(ds_chunk* chunk)
 {
-    DS_ARRAY_FREE(uint8_t, chunk->code);
-    DS_ARRAY_FREE(uint16_t, chunk->lines);
-    ds_value_array_free(&chunk->consts);
-    ds_chunk_init(chunk);
+    ds_vector_uint8_t_free(&chunk->code);
+    ds_vector_ds_line_rle_free(&chunk->lines);
+    ds_vector_ds_value_free(&chunk->consts);
 }
+
+void ds_chunk_write(ds_chunk *chunk, uint8_t byte, uint16_t line);
 
 static inline uint8_t ds_chunk_add_const(ds_chunk *chunk, ds_value value)
 {
     if (chunk->consts.count == UINT8_MAX)
         DS_PANIC("too many consts");
-    ds_value_array_write(&chunk->consts, value);
+    ds_vector_ds_value_append(&chunk->consts, value);
     return chunk->consts.count - 1;
 }
+
+uint16_t ds_instruction_line(const ds_chunk *chunk, size_t ip);
 
 #endif
