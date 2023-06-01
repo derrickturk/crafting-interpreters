@@ -1,6 +1,6 @@
 CC?=gcc
 CCOPTS?=-std=c11 -Iinclude -Wall -Wextra -pedantic -static -O2
-CCOPTS_DBG?=-std=c11 -Iinclude -Wall -Wextra -pedantic -static -g
+CCOPTS_DBG?=-std=c11 -Iinclude -Wall -Wextra -pedantic -static -g -D DS_DEBUG_TRACE
 
 HDRS=$(wildcard include/ds/*.h)
 OBJS=$(patsubst src/%.c, build/%.o, $(wildcard src/*.c))
