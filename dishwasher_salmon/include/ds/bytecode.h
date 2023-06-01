@@ -7,9 +7,9 @@
 #include "ds/vector.h"
 
 typedef enum ds_opcode {
-    OP_CONST,
-    OP_CONST_LONG,
-    OP_RETURN,
+    DS_OP_CONST,
+    DS_OP_CONST_LONG,
+    DS_OP_RETURN,
 } ds_opcode;
 
 typedef struct ds_line_rle {

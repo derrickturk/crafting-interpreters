@@ -13,7 +13,7 @@ void ds_chunk_write_const(ds_chunk *chunk, ds_value value, uint16_t line)
 {
     if (chunk->consts.count <= UINT8_MAX) {
         uint8_t ix = ds_vector_ds_value_append(&chunk->consts, value);
-        ds_vector_uint8_t_append(&chunk->code, OP_CONST);
+        ds_vector_uint8_t_append(&chunk->code, DS_OP_CONST);
         record_instr_line(&chunk->lines, line);
         ds_vector_uint8_t_append(&chunk->code, ix);
         record_instr_line(&chunk->lines, line);
@@ -21,7 +21,7 @@ void ds_chunk_write_const(ds_chunk *chunk, ds_value value, uint16_t line)
         size_t ix = ds_vector_ds_value_append(&chunk->consts, value);
         if (ix > 0xffffff)
             DS_PANIC("too many constants");
-        ds_vector_uint8_t_append(&chunk->code, OP_CONST_LONG);
+        ds_vector_uint8_t_append(&chunk->code, DS_OP_CONST_LONG);
         record_instr_line(&chunk->lines, line);
         ds_vector_uint8_t_append(&chunk->code, ix & 0x0000ff);
         record_instr_line(&chunk->lines, line);
