@@ -47,17 +47,11 @@ ds_vm_result ds_vm_run(ds_vm *vm)
                 ds_value_print(ds_vm_stack_pop(vm));
                 return DS_VM_OK;
             case DS_OP_CONST:
-                {
-                    ds_value v = fetch_const(vm);
-                    ds_vm_stack_push(vm, v);
-                    break;
-                }
+                ds_vm_stack_push(vm, fetch_const(vm));
+                break;
             case DS_OP_CONST_LONG:
-                {
-                    ds_value v = fetch_const_long(vm);
-                    ds_vm_stack_push(vm, v);
-                    break;
-                }
+                ds_vm_stack_push(vm, fetch_const_long(vm));
+                break;
         }
     }
 }
