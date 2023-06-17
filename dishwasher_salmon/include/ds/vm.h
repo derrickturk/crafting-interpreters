@@ -36,12 +36,7 @@ static inline void ds_vm_free(ds_vm *vm)
 
 ds_vm_result ds_vm_run(ds_vm *vm);
 
-static inline ds_vm_result ds_vm_interpret(ds_vm *vm, const ds_chunk *chunk)
-{
-    vm->chunk = chunk;
-    vm->ip = chunk->code.data;
-    return ds_vm_run(vm);
-}
+ds_vm_result ds_vm_interpret(ds_vm *vm, const char *text);
 
 // TODO: make this safe after we're sure it's sticking around
 static inline void ds_vm_stack_push(ds_vm *vm, ds_value value)

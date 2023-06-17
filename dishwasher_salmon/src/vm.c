@@ -78,3 +78,8 @@ ds_vm_result ds_vm_run(ds_vm *vm)
         }
     }
 }
+
+ds_vm_result ds_vm_interpret(ds_vm *vm, const char *text)
+{
+    return DS_VM_OK;
+}
