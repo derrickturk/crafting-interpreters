@@ -1,4 +1,5 @@
 #include "ds/common.h"
+#include "ds/compiler.h"
 #include "ds/bytecode.h"
 #include "ds/value.h"
 #include "ds/vm.h"
@@ -81,5 +82,9 @@ ds_vm_result ds_vm_run(ds_vm *vm)
 
 ds_vm_result ds_vm_interpret(ds_vm *vm, const char *text)
 {
+    ds_chunk chunk;
+    if (ds_compile(text, &chunk) != DS_COMPILER_OK)
+        return DS_VM_COMPILE_ERROR;
+    // TODO: run the chunk
     return DS_VM_OK;
 }
