@@ -30,6 +30,7 @@ size_t ds_disassemble_instr(const ds_chunk *chunk, size_t ip)
     switch (chunk->code.data[ip]) {
         HANDLE(DS_OP_CONST, const_instr)
         HANDLE(DS_OP_CONST_LONG, const_long_instr)
+        HANDLE(DS_OP_NEGATE, simple_instr)
         HANDLE(DS_OP_RETURN, simple_instr)
         default:
             DS_PANIC("invalid instruction");

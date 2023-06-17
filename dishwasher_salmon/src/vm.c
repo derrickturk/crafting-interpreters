@@ -42,16 +42,20 @@ ds_vm_result ds_vm_run(ds_vm *vm)
         ds_disassemble_instr(vm->chunk, vm->ip - vm->chunk->code.data);
 #endif
         switch (fetch_code(vm)) {
-            case DS_OP_RETURN:
-                // TODO: temporary
-                ds_value_print(ds_vm_stack_pop(vm));
-                return DS_VM_OK;
             case DS_OP_CONST:
                 ds_vm_stack_push(vm, fetch_const(vm));
                 break;
             case DS_OP_CONST_LONG:
                 ds_vm_stack_push(vm, fetch_const_long(vm));
                 break;
+            case DS_OP_NEGATE:
+                ds_vm_stack_push(vm,
+                  (ds_value) { .d = -ds_vm_stack_pop(vm).d });
+                break;
+            case DS_OP_RETURN:
+                // TODO: temporary
+                ds_value_print(ds_vm_stack_pop(vm));
+                return DS_VM_OK;
         }
     }
 }

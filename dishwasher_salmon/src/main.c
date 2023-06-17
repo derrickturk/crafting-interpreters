@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
     ds_chunk_init(&c);
 
     ds_chunk_write_const(&c, (ds_value){ .d = 37.2 }, 1);
+    ds_chunk_write(&c, DS_OP_NEGATE, 1);
     ds_chunk_write(&c, DS_OP_RETURN, 1);
 
     ds_disassemble_chunk(&c, "test chunk");
