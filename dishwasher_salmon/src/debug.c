@@ -30,6 +30,10 @@ size_t ds_disassemble_instr(const ds_chunk *chunk, size_t ip)
     switch (chunk->code.data[ip]) {
         HANDLE(DS_OP_CONST, const_instr)
         HANDLE(DS_OP_CONST_LONG, const_long_instr)
+        HANDLE(DS_OP_ADD, simple_instr)
+        HANDLE(DS_OP_SUBTRACT, simple_instr)
+        HANDLE(DS_OP_MULTIPLY, simple_instr)
+        HANDLE(DS_OP_DIVIDE, simple_instr)
         HANDLE(DS_OP_NEGATE, simple_instr)
         HANDLE(DS_OP_RETURN, simple_instr)
         default:

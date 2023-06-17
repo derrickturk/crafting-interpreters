@@ -9,6 +9,10 @@
 typedef enum ds_opcode {
     DS_OP_CONST,
     DS_OP_CONST_LONG,
+    DS_OP_ADD,
+    DS_OP_SUBTRACT,
+    DS_OP_MULTIPLY,
+    DS_OP_DIVIDE,
     DS_OP_NEGATE,
     DS_OP_RETURN,
 } ds_opcode;

@@ -14,9 +14,13 @@ int main(int argc, char *argv[])
     ds_chunk c;
     ds_chunk_init(&c);
 
-    ds_chunk_write_const(&c, (ds_value){ .d = 37.2 }, 1);
-    ds_chunk_write(&c, DS_OP_NEGATE, 1);
-    ds_chunk_write(&c, DS_OP_RETURN, 1);
+    ds_chunk_write_const(&c, (ds_value){ .d = 1.2 }, 1);
+    ds_chunk_write_const(&c, (ds_value){ .d = 3.4 }, 2);
+    ds_chunk_write(&c, DS_OP_ADD, 2);
+    ds_chunk_write_const(&c, (ds_value){ .d = 5.6 }, 3);
+    ds_chunk_write(&c, DS_OP_DIVIDE, 3);
+    ds_chunk_write(&c, DS_OP_NEGATE, 3);
+    ds_chunk_write(&c, DS_OP_RETURN, 3);
 
     ds_disassemble_chunk(&c, "test chunk");
 
